@@ -1,0 +1,31 @@
+# The assessment loop
+
+The customer side. TrustMCP standardizes **access to evidence** - you keep your own framework
+and reach your own verdict.
+
+1. **Discover** - resolve the vendor from a domain you already trust
+   (`/.well-known/trustmcp.json`).
+2. **Verify the publisher** - `GET /v1/mark/{vid}`. Don't trust a self-asserted status.
+3. **Request access** - `POST /v1/keys/request`; the vendor approves (or a policy
+   auto-grants) and you get a scoped, expiring key.
+4. **Manifest** - see what evidence exists.
+5. **Attestations** - map each claim key to your own controls. *Two customers can map
+   the same claims differently - that's expected.*
+6. **Freshness** - only pull what you still need; flag `expiring` / `expired`.
+7. **Fetch + verify** - for contested/high-risk controls, download the backing artifact
+   and check the bytes against the manifest `sha256`.
+8. **Decide locally** - produce your assessment in your own format. The verdict never
+   goes back to the network.
+
+## Mapping claims to controls
+
+| Your control | TrustMCP claim | Pass when |
+|--------------|-----------|-----------|
+| AC-2 MFA | `mfa.enforced` | `== true` |
+| SC-28 Encryption at rest | `encryption.at_rest` | contains `AES` |
+| SC-8 Encryption in transit | `encryption.in_transit` | contains `TLS` |
+| IR-6 Breach notice | `breach_notification_hours` | `<= 72` |
+| Data residency | `data_residency` | includes required regions |
+
+Read it over **[MCP](/customers/mcp)** (recommended for agents) or
+**[REST](/customers/rest)**.

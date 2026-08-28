@@ -1,0 +1,50 @@
+# Self-hosting
+
+TrustMCP is fully self-hostable - it's an open standard, and profiles are portable JSON.
+
+## Managed (Render)
+
+The fastest path is the committed **`render.yaml`** Blueprint: connect the repo in
+Render, click **Apply**, set the signing key, and attach your domains. See the full
+[deploy guide](https://github.com/trustmcp/trustmcp/blob/main/DEPLOY.md).
+
+## Local / single box
+
+```bash
+docker compose up --build
+docker compose exec network python -m app.seed all
+```
+
+Brings up Postgres, MinIO (S3-compatible), the network API, and the web app.
+
+## Production checklist
+
+**Network**
+
+- `TRUSTMCP_DATABASE_URL` → Postgres (`postgresql+psycopg://…`). Migrations run automatically
+  (`alembic upgrade head`) at container boot.
+- `TRUSTMCP_S3_BUCKET` + region/credentials for artifact storage (or leave empty to use local
+  disk with signed redirect URLs).
+- `TRUSTMCP_SERVICE_TOKEN` - shared with the web backend (use a strong random value).
+- `TRUSTMCP_SIGNING_PRIVATE_KEY` - a **stable** base64 Ed25519 seed so every instance signs
+  identically (don't rely on the ephemeral dev key).
+- `TRUSTMCP_SMTP_*` for owner notifications + freshness nudges; `TRUSTMCP_HUBSPOT_TOKEN` /
+  `TRUSTMCP_SALESFORCE_*` for CRM auto-release; `TRUSTMCP_RATE_LIMIT_PER_MINUTE`; `TRUSTMCP_SENTRY_DSN`.
+
+**Web**
+
+- `DATABASE_URL` (Postgres), `AUTH_SECRET`, `AUTH_URL`, and at least one auth provider
+  (GitHub/Google/SSO/email). See [auth setup](https://github.com/trustmcp/trustmcp/blob/main/docs/auth-setup.md).
+- `TRUSTMCP_NETWORK_URL` + `TRUSTMCP_SERVICE_TOKEN` (matching the network).
+- Runs `prisma migrate deploy` at boot.
+
+## Scaling
+
+- The network and web tiers are stateless - run multiple replicas behind a load balancer.
+- Put a CDN/WAF in front for caching and rate limiting at the edge (an in-process limiter
+  ships as a first line of defense).
+- Back up Postgres and the artifact bucket.
+
+## Verify your deployment
+
+Run the [conformance suite](/reference/conformance) against your network URL.

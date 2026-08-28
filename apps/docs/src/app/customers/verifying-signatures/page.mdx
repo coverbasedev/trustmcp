@@ -1,0 +1,32 @@
+# Verifying signatures
+
+Manifest and attestations responses are **signed** by the network with an Ed25519 key,
+so a consumer can detect tampering in transit or at rest.
+
+Each response carries:
+
+- `X-TrustMCP-Signature` - base64 Ed25519 signature over the **exact response body bytes**
+- `X-TrustMCP-Key-Id` - the signing key identifier
+
+Fetch the public key once and verify:
+
+```
+GET /v1/network/key
+→ { "alg": "Ed25519", "public_key": "<base64>", "key_id": "…" }
+```
+
+```python
+import base64
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+pub = Ed25519PublicKey.from_public_bytes(base64.b64decode(public_key))
+pub.verify(base64.b64decode(resp.headers["X-TrustMCP-Signature"]), resp.content)  # raises if invalid
+```
+
+Combine this with the per-artifact `sha256` (verified after download) for end-to-end
+integrity: the **signature** proves the manifest/attestations are authentic and
+unmodified, and the **hash** proves each downloaded document matches what the manifest
+declared.
+
+In production, configure a stable signing key via `TRUSTMCP_SIGNING_PRIVATE_KEY`; the
+`key_id` lets you pin or rotate keys.

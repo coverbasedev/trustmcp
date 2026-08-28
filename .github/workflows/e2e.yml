@@ -1,0 +1,72 @@
+name: E2E (authenticated web flow)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: trustmcp
+          POSTGRES_PASSWORD: trustmcp
+          POSTGRES_DB: trustmcp
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U trustmcp" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      TRUSTMCP_SERVICE_TOKEN: e2e-service-token
+      DATABASE_URL: postgresql://trustmcp:trustmcp@localhost:5432/trustmcp?schema=web
+      AUTH_SECRET: e2e-secret-e2e-secret-e2e-secret-xx
+      AUTH_URL: http://localhost:3000
+      AUTH_DEV_LOGIN: "1"
+      # The standalone server runs as NODE_ENV=production; allow dev login here
+      # explicitly (real deploys never set this) so the e2e flow can sign in.
+      AUTH_DEV_LOGIN_ALLOW_PROD: "1"
+      TRUSTMCP_NETWORK_URL: http://localhost:8000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: astral-sh/setup-uv@v5
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trustmcp/spec build && pnpm --filter @trustmcp/sdk build
+
+      - name: Start network API (sqlite)
+        working-directory: apps/network
+        run: |
+          uv venv .venv
+          uv pip install --python .venv -e .
+          TRUSTMCP_DATABASE_URL="sqlite:///./e2e.db" TRUSTMCP_SERVICE_TOKEN=$TRUSTMCP_SERVICE_TOKEN \
+            nohup .venv/bin/uvicorn app.main:app --port 8000 > network.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:8000/health && break; sleep 1; done
+
+      - name: Migrate + build + start web (standalone server)
+        working-directory: apps/web
+        run: |
+          pnpm exec prisma migrate deploy
+          pnpm build
+          cp -r .next/static .next/standalone/apps/web/.next/static
+          cp -r public .next/standalone/apps/web/public 2>/dev/null || true
+          HOSTNAME=0.0.0.0 PORT=3000 nohup node .next/standalone/apps/web/server.js > web.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/ && break; sleep 1; done
+
+      - name: Run Playwright
+        working-directory: apps/web
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          echo "=== network ==="; cat apps/network/network.log || true
+          echo "=== web ==="; cat apps/web/web.log || true

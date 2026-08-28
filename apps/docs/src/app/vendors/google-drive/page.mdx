@@ -1,0 +1,194 @@
+# Google Drive sync
+
+Link a Drive folder and TrustMCP keeps the latest version of each document in sync with your
+trust center. You stop remembering to re-upload the SOC 2 when it is reissued; you drop it in
+the folder you already use, and the trust center picks it up.
+
+Access is **read-only** (`drive.readonly`). TrustMCP pulls documents out of Drive and never
+writes back.
+
+## The one rule worth stating up front
+
+**A sync never publishes anything you have not agreed to publish.**
+
+Drive folders contain drafts, internal notes, and the occasional file someone dropped in by
+mistake. A sync that auto-published whatever it found would turn a shared folder into a
+disclosure surface. So discovery and publication are separate steps:
+
+```
+discover → classify → queue → you decide → publish
+```
+
+New files land in a review queue. You include them (with the classification and presentation
+you want) or exclude them. Only then do they become resources on your trust center.
+
+## Connecting
+
+**Evidence → Google Drive sync** in the builder.
+
+### Click through Google (no credentials to handle)
+
+Press **Connect Google Drive**, approve read-only access at Google, then pick your folder
+from a list. Nothing to copy or paste.
+
+This appears when the network operator has configured a Google OAuth client (see below). The
+consent screen opens as a full-page redirect rather than an embedded frame — Google refuses
+to render its sign-in inside an iframe, so any product that appears to embed it is really
+opening a popup or a redirect.
+
+TrustMCP requests only `drive.readonly`. It cannot modify or delete anything in your Drive,
+and you can revoke the grant from your Google account at any time. The refresh token is
+exchanged and stored server-side; it never reaches your browser.
+
+Between approving and choosing a folder, the connection sits at **authorized, no folder
+selected**. It holds credentials and syncs nothing. Re-authorizing later (say, after
+revoking the grant) keeps the folder you already chose rather than making you pick again.
+
+### Or link with your own credentials
+
+Under **Advanced**, or whenever one-click is not configured on the network:
+
+- **Service account** (recommended for shared drives). Paste the key JSON and share the
+  folder with the key's `client_email` as a Viewer. Survives an employee leaving.
+- **OAuth**. Supply your own client id, secret, and refresh token.
+
+Either way the credential is stored per trust center, write-only: the API reports *whether*
+one is set, never its value.
+
+The folder is read once before anything is stored, so a wrong id or an unshared folder fails
+immediately with a message you can act on — rather than silently producing an empty sync
+later.
+
+### For network operators
+
+One-click connect needs a Google OAuth client configured once, network-wide, so that no
+trust-center owner ever handles a credential:
+
+1. In **Google Cloud Console**, pick or create a project and enable the **Google Drive API**.
+2. **APIs & Services → OAuth consent screen** — configure it, and add the
+   `.../auth/drive.readonly` scope. Publish it (or add your owners as test users while it
+   stays in testing).
+3. **Credentials → Create credentials → OAuth client ID → Web application**. Register this
+   exact **authorized redirect URI**:
+
+   ```
+   https://<your-web-host>/api/integrations/drive/callback
+   ```
+
+   It must match verbatim or Google refuses the callback with `redirect_uri_mismatch`.
+4. Set `TRUSTMCP_GOOGLE_CLIENT_ID` and `TRUSTMCP_GOOGLE_CLIENT_SECRET` on the network
+   service. Override the callback with `TRUSTMCP_GOOGLE_OAUTH_REDIRECT_URL` if your web app
+   is not at the default host.
+
+Leave them unset and nothing breaks — the builder shows the paste-your-own-credentials form
+and says why the button is missing.
+
+The `state` carried through the consent round-trip is HMAC-signed and expires (15 minutes by
+default), which is what stops a code obtained for one trust center from being attached to
+another.
+
+## Classification rules
+
+Every discovered file needs a decision: what type it is, which category it files under,
+whether it is public or key-gated. Rules propose the answer so you are confirming rather than
+typing.
+
+```json
+[
+  { "label": "Certifications", "match": "Compliance/*", "type": "soc2_type2",
+    "category": "Compliance", "access": "key_required", "action": "include" },
+  { "label": "Ignore drafts", "match": "*Draft*", "action": "exclude" }
+]
+```
+
+- `match` is a glob over the file's path inside the linked folder, or its bare filename — so
+  `*.pdf` works whether your folder is flat or nested.
+- Rules run **top to bottom and the first match wins**, so a specific rule above a general one
+  behaves the way you read it.
+- `action: "exclude"` keeps matching files out of the queue entirely. A folder of working
+  drafts beside the real evidence stops generating review noise.
+
+Files matching no rule are still classified from the filename — "Acme SOC 2 Type II 2026.pdf"
+is recognized as a SOC 2 Type II under Compliance — but they always wait in the queue,
+because a filename guess is a suggestion, not consent.
+
+Confidential types (SOC reports, pen tests, financials, architecture) default to
+**key_required** even when the folder's default is public.
+
+Before saving a rule set, preview it:
+
+```
+POST /v1/vendors/{vid}/integrations/drive/rules/preview
+{ "rules": [ … ] }
+```
+
+It reports what each already-discovered file *would* become. Rules decide what gets
+published, so seeing their effect before saving is the difference between a useful feature
+and a hazard.
+
+## Auto-publish
+
+Turn on **Publish rule-matched files without review** and a file matching an `include` rule
+publishes on sight. Files matching no rule still wait in the queue — auto-publish is not
+"publish everything", and a filename heuristic never counts as a rule match.
+
+## Revisions, deletions, and relinking
+
+- **A new revision becomes a new version**, not a duplicate. The outgoing content is archived
+  to the artifact's version history exactly as a manual re-upload would be, with the same
+  hashing and the same audit trail.
+- **An unchanged file is not re-downloaded.** Change is detected by Drive's md5 where one
+  exists, and by `modifiedTime` for Google-native docs (which have no md5).
+- **A file deleted from Drive does not unpublish the document.** The queue marks it removed
+  and leaves the artifact alone. Someone tidying a folder should not silently strip a SOC 2
+  report off a live trust center.
+- **Relinking the same folder re-adopts what it published before**, rather than publishing a
+  second copy of everything.
+- **An excluded file stays excluded** across every future sync.
+
+Google Docs, Sheets, and Slides are exported on the way in — Docs and Slides to PDF, Sheets
+to XLSX — because a Google-native file has no bytes to publish.
+
+## Sync modes
+
+- **On demand** — syncs when you press *Sync now*.
+- **Automatically** — a scheduled job picks the folder up without anyone clicking.
+
+One file failing to download never aborts the run: its error is reported and the rest still
+publish.
+
+## Presentation
+
+Including a file is also where you set how it reads on the public page: title, description,
+category, visibility, whether it is featured, whether it is hidden. Everything on
+[Resource presentation](/vendors/artifacts#presentation) applies to synced documents exactly
+as it does to uploaded ones — a synced artifact is indistinguishable downstream from an
+uploaded one, including in the [OSCAL export](/customers/oscal), where the description you
+wrote for visitors is the description OSCAL carries.
+
+## Disconnecting
+
+Unlinking stops the sync and leaves published documents in place. Ask for a purge explicitly
+if you also want the documents removed.
+
+## Endpoints
+
+```
+GET    /v1/vendors/{vid}/integrations/drive              status
+POST   /v1/vendors/{vid}/integrations/drive              link a folder
+PATCH  /v1/vendors/{vid}/integrations/drive              sync settings + rules
+DELETE /v1/vendors/{vid}/integrations/drive?purge=false  unlink
+POST   /v1/vendors/{vid}/integrations/drive/sync         sync now
+GET    /v1/vendors/{vid}/integrations/drive/files        the review queue
+POST   /v1/vendors/{vid}/integrations/drive/files/{id}/decision
+POST   /v1/vendors/{vid}/integrations/drive/files/decisions   bulk exclude
+POST   /v1/vendors/{vid}/integrations/drive/rules/preview
+GET    /v1/vendors/{vid}/integrations/drive/rules/reference
+```
+
+All owner-authenticated. Bulk *inclusion* is deliberately absent: including publishes
+documents, and that decision deserves to be made one file at a time.
+
+Each publication also records an entry on the [OSCAL change feed](/customers/oscal-continuous),
+so a customer monitoring you continuously learns about the new evidence without polling
+blindly.

@@ -1,0 +1,36 @@
+# NDA gate & webhooks
+
+## NDA click-through
+
+Require requesters to accept an NDA before they can request access. Enable it in
+**Settings** and provide the NDA text.
+
+- The public trust page shows the NDA and an acceptance checkbox; a request without
+  acceptance is rejected (`422`).
+- Acceptance is recorded on the request: a timestamp and a **SHA-256 of the exact NDA
+  text** the requester saw, so you have an auditable record of what was agreed.
+
+This composes with auto-release: a requester can accept the NDA *and* match an
+auto-release policy in the same step.
+
+## Webhooks
+
+Get notified in your own systems on access events. In **Settings**, set a **Webhook
+URL** and a **signing secret**. The network POSTs a JSON body for:
+
+- `key.requested`
+- `key.granted` (manual or auto)
+- `key.denied`
+- `key.revoked`
+
+Each request carries `X-TrustMCP-Signature: sha256=<HMAC>` over the raw body, computed with
+your secret. Verify it before trusting the payload:
+
+```python
+import hmac, hashlib
+expected = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+assert hmac.compare_digest(expected, request.headers["X-TrustMCP-Signature"])
+```
+
+Delivery is best-effort and asynchronous; pair it with the dashboard queue for a
+complete picture.

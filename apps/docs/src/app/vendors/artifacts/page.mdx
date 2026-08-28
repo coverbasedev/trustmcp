@@ -1,0 +1,93 @@
+# Artifacts & visibility
+
+Upload your evidence once. Files are stored by the network and released per your access
+rules; the **sha256** is recorded so agents can verify exactly what they download.
+
+## Adding artifacts
+
+In **Artifacts**, choose a type, set the issue date and optional expiry, optionally a
+scope, then upload the file (or upload later). Suggested types:
+
+`soc2_type2`, `soc2_type1`, `iso_27001`, `pentest`, `insurance_coi`, `financials`,
+`dpa`, `architecture`, `subprocessor_list`, `sbom`, `policy`. The set is open.
+
+## Public vs. private
+
+Each artifact has a **visibility**:
+
+- **Public** - anyone can download from your trust page, no key. Good for an ISO
+  certificate or a public pentest summary.
+- **Private** (default) - listed publicly, but the file is released only after you
+  approve an access request and the customer presents a scoped key.
+
+Public downloads go through `GET /v1/vendors/{id}/artifacts/{aid}/public`; the network
+refuses that endpoint for private artifacts.
+
+## Versioning & history
+
+Artifacts are **versioned**. The first upload is `v1`. Each time you **upload a new
+version** (optionally with a note), the current content is archived to history and the
+version number is bumped - nothing is lost.
+
+- Owners see the full history in the builder (and via
+  `GET /v1/vendors/{id}/manage/artifacts/{aid}/versions`).
+- Key holders can list versions
+  (`GET /v1/vendors/{id}/artifacts/{aid}/versions`) and download a specific one
+  (`…/versions/{n}`) - useful for audit and reproducibility.
+- The manifest always reflects the **current** version number.
+
+## Watermarking
+
+Enable **Settings → Document watermarking** to stamp every PDF download with the
+requester's domain + timestamp (diagonal + footer), deterring leaks. Because
+watermarking changes the bytes, the fetch response returns the watermarked `sha256`, the
+`original_sha256`, and a `watermarked: true` flag. Non-PDFs and disabled vendors are
+served unchanged.
+
+## Presentation
+
+How a resource *reads* on your public trust center is separate from who is allowed to
+download it. Set it per resource in **Evidence → Presentation**:
+
+- **Description** - a line of context under the title ("Independently audited annual
+  report"). It also travels into the [OSCAL export](/customers/oscal), so the description
+  you wrote for visitors is the description a customer's GRC tool ingests.
+- **Category** - the group it files under.
+- **Position** - order within its group; lower first. Resources sharing a position fall
+  back to newest first, which is what every existing trust center already does.
+- **Featured** - pinned to a band at the top of the page.
+- **Hidden** - kept out of the public listing entirely.
+
+**Hidden is not the same as private.** Hiding removes a resource from the listing;
+`visibility` decides entitlement. A hidden *public* artifact is still downloadable by
+anyone holding its id — hide it to reduce clutter, mark it private to restrict it.
+
+The page-level layout lives in the same place:
+
+- **Layout** - list, grid of cards, or table.
+- **Group by** - category, document type, product line, or no grouping.
+- **Category order** - the order your groups appear in. Categories you do not name appear
+  after them alphabetically, so adding a category never makes it disappear.
+- **Show descriptions / dates / hashes** - what appears on each row. Hashes are off by
+  default; turn them on if you want visitors to verify downloads without requesting a key.
+- **Empty message** - what a visitor sees when nothing is published.
+
+```
+GET /v1/vendors/{id}/manage/resource-display    current settings + categories in use
+PUT /v1/vendors/{id}/resource-display           layout, grouping, order
+PUT /v1/vendors/{id}/artifacts/presentation     reorder/re-label several at once
+```
+
+The bulk endpoint exists so a drag-to-reorder list never renders half-applied.
+
+## Syncing from Google Drive
+
+Rather than uploading each new revision by hand, you can
+[link a Google Drive folder](/vendors/google-drive) and have the latest version of each
+document flow in — with a review step so nothing publishes without your say-so.
+
+## Freshness
+
+Each artifact's `valid_until` drives a freshness status - `valid`, `expiring`, or
+`expired`. The network can email you before expiry (the freshness nudge), you refresh
+once, and every customer sees the update at the same time.

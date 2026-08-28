@@ -1,0 +1,34 @@
+# Running a network node
+
+TrustMCP is designed to support **multiple, interoperable network operators** - it's not
+locked to one host. An accredited node is expected to meet a few obligations so that
+vendors and customers can trust and move between operators.
+
+## Obligations
+
+- **Conformance.** Pass the [conformance suite](/reference/conformance) on every release
+  and expose `GET /v1/network/key` with a stable, published signing key.
+- **Integrity.** Sign manifest/attestations (Ed25519); preserve artifact `sha256`.
+- **Custody & least privilege.** Store owner tokens, access keys, CRM tokens, and webhook
+  secrets hashed or write-only; scope keys; honor revocation immediately.
+- **Auditability.** Record every read and management action; offer export.
+- **Availability & retention.** Publish uptime and audit-log retention SLOs.
+- **Portability.** Let vendors export their profile and move to another operator; never
+  give one member privileged access to another's evidence.
+
+## Identity & verification
+
+The node verifies domain control (DNS `TXT` or `.well-known`) before marking a domain
+verified, and makes that status independently checkable at `GET /v1/mark/{vid}`. The node
+verifies *identity and custody* - not the truth of the evidence.
+
+## Key management
+
+Use a stable Ed25519 signing key from a secret manager/KMS. The `key_id` returned by the
+key endpoint lets consumers pin and lets you rotate (publish the new key, dual-sign
+during the overlap, then retire the old key).
+
+## Neutrality
+
+Operators must meet the same conformance bar regardless of commercial relationship. See
+the [charter and neutrality statement](https://github.com/trustmcp/trustmcp/tree/main/governance).

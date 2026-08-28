@@ -1,0 +1,35 @@
+# Framework mapping
+
+TrustMCP can map a vendor's machine-readable claims onto a control framework, so you don't
+have to translate claim keys by hand. Mappings tell you **which controls a claim speaks
+to** - you still apply your own pass/fail logic.
+
+## Available frameworks
+
+```
+GET /v1/frameworks
+→ { "frameworks": [ { "id": "soc2", ... }, { "id": "nist_800_53", ... }, { "id": "iso_27001", ... } ] }
+```
+
+## Mapped attestations (scope: attestations)
+
+```
+GET /v1/vendors/{vid}/attestations/mapped?framework=soc2
+```
+
+```json
+{
+  "framework": "soc2",
+  "name": "SOC 2 (Trust Services Criteria)",
+  "controls": [
+    { "control": "CC6.1", "title": "Logical access controls",
+      "claims": [{ "key": "mfa.enforced", "value": true, "evidence": ["art_soc2_2026"] }],
+      "present": true },
+    { "control": "A1.2", "title": "Availability commitments", "claims": [], "present": false }
+  ]
+}
+```
+
+`present: false` means the vendor hasn't published a claim for that control - a prompt to
+fetch the backing document or follow up. The mapping set is intentionally small and
+extensible (see `apps/network/app/frameworks.py`).

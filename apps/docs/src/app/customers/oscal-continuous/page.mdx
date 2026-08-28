@@ -1,0 +1,150 @@
+# Continuous OSCAL
+
+A point-in-time export answers "what is true now". That is enough for an annual review and
+useless for continuous monitoring, because you have no way to know *when* to ask again short
+of re-pulling every document on a timer and diffing megabytes of JSON.
+
+TrustMCP closes that gap with three mechanisms over one per-vendor change log.
+
+## The change log
+
+Every change to a vendor's published evidence appends an entry. The entry's **sequence
+number is your cursor**: monotonic and gapless within a vendor, so `since=12` is unambiguous
+and you can tell "nothing changed" from "I missed something" without comparing timestamps.
+
+Crucially, each change names the OSCAL models it invalidates — so a branding edit never
+makes you re-pull a POA&M.
+
+| Event | Invalidates |
+| --- | --- |
+| `artifact.created` / `artifact.updated` / `artifact.version` / `artifact.deleted` | component-definition, SSP, assessment-results, POA&M |
+| `claims.replaced` | component-definition, SSP, assessment-results, POA&M |
+| `controls.replaced` | assessment-results, POA&M |
+| `subprocessors.replaced` | component-definition, SSP, assessment-results |
+| `mark.changed` | component-definition, assessment-results, POA&M |
+| `drive.synced` | every evidence-bearing model |
+| `oscal.imported` | every evidence-bearing model |
+| `published` | everything |
+
+## Poll
+
+The simplest mechanism, and the only one that survives your being offline for a week.
+
+```
+GET /v1/vendors/{vid}/oscal/changes?since=42&limit=100     (scope: attestations)
+```
+
+```json
+{
+  "vendor_id": "vnd_acme",
+  "since": 42,
+  "cursor": 47,
+  "latest": 47,
+  "has_more": false,
+  "changes": [
+    {
+      "sequence": 43,
+      "event": "artifact.version",
+      "subject": "art_soc2",
+      "models": ["component-definition", "system-security-plan", "assessment-results",
+                 "plan-of-action-and-milestones"],
+      "detail": { "version": 3, "sha256": "…" },
+      "at": "2026-08-19T09:14:22Z"
+    }
+  ]
+}
+```
+
+Save `cursor` and pass it as `since` next time. `has_more` means the page was full — keep
+paging before treating yourself as caught up. Narrow to what you care about with
+`&models=plan-of-action-and-milestones`.
+
+## Stream
+
+For consumers that want push without running a webhook endpoint:
+
+```
+GET /v1/vendors/{vid}/oscal/stream?since=42
+Accept: text/event-stream
+```
+
+```
+event: oscal.change
+id: 43
+data: {"vendor_id":"vnd_acme","cursor":43,"change":{…},"pull":{"assessment-results":"https://…"}}
+```
+
+`Last-Event-ID` is honored on reconnect, so a dropped connection resumes from the last change
+you actually received rather than replaying from zero or skipping the gap. The stream closes
+itself after a bounded run and emits `oscal.reconnect` with your cursor; reconnect with it.
+
+## Subscribe
+
+A registered webhook, delivered as changes are recorded:
+
+```
+POST /v1/vendors/{vid}/oscal/subscriptions      (scope: attestations)
+{
+  "url": "https://grc.globex.com/hooks/trustmcp",
+  "secret": "shared-secret",
+  "models": ["plan-of-action-and-milestones"]
+}
+```
+
+Deliveries are HMAC-SHA256 signed with your secret in `X-TrustMCP-Signature`, the same scheme
+as vendor access webhooks. The payload carries the change and the URLs to re-pull:
+
+```json
+{
+  "event": "oscal.change",
+  "data": {
+    "vendor_id": "vnd_acme",
+    "cursor": 43,
+    "change": { "event": "artifact.version", "models": ["…"] },
+    "pull": { "plan-of-action-and-milestones": "https://network.trustmcp.app/v1/…" }
+  }
+}
+```
+
+The subscription is **bound to the access key that created it**: revoking or expiring the key
+stops delivery, so entitlement and notification never drift apart. `models` is a filter —
+omit it for everything. An endpoint that fails repeatedly is suspended rather than retried
+forever; a dead receiver should not slow every future evidence update.
+
+## The loop, in practice
+
+```python
+cursor = load_cursor()
+batch = client.get_oscal_changes(vendor_id, cursor)
+invalidated = {m for c in batch["changes"] for m in c["models"]}
+
+for model in invalidated:
+    document = client.get_oscal_model(vendor_id, model)
+    ingest(document)
+
+save_cursor(batch["cursor"])
+```
+
+Through MCP, that whole loop is one tool call:
+
+```
+poll_oscal_for_changes(vendor_id, since=cursor)
+```
+
+It returns the new cursor, the changes, and only the documents that actually moved — nothing
+at all when nothing changed.
+
+## Digests as a second line of defense
+
+`GET /v1/vendors/{vid}/oscal/bundle` returns a content digest per document alongside the
+current cursor. Because exports are deterministic, an unchanged document hashes identically
+forever. Compare digests to confirm a re-pull actually differs before you spend a re-parse —
+useful when reconciling after downtime, or when you want a cheap integrity check independent
+of the change log.
+
+## What this is not
+
+The change log records *that* published evidence moved, not a security event stream. A vendor
+uploading a new pen test and a vendor's control failing look the same here — a change to the
+underlying documents. The judgement stays in your tooling: pull the invalidated models, read
+the findings, apply your own policy.

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trustmcp.org/schemas/0.1/attestations.schema.json",
+  "title": "TrustMCP Attestations",
+  "description": "Structured machine-readable claims, each linked to backing artifacts.",
+  "type": "object",
+  "required": ["schema_version", "vendor_id", "generated_at", "claims"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1" },
+    "vendor_id": { "type": "string", "pattern": "^vnd_[a-z0-9_]+$" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    }
+  },
+  "$defs": {
+    "claim": {
+      "type": "object",
+      "required": ["key", "value", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+(\\.[a-z0-9_]+)*$",
+          "description": "Dotted claim key, e.g. mfa.enforced"
+        },
+        "value": {
+          "description": "Boolean, string, number, or array of strings.",
+          "anyOf": [
+            { "type": "boolean" },
+            { "type": "string" },
+            { "type": "number" },
+            { "type": "array", "items": { "type": "string" } }
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^art_[a-z0-9_]+$" }
+        }
+      }
+    }
+  }
+}

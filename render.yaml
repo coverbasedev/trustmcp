@@ -1,0 +1,365 @@
+# TrustMCP — Render Blueprint
+# ---------------------------------------------------------------------------
+# One Postgres database + three Docker services (network API, web app, docs)
+# plus a tiny static site that 301-redirects trustmcp.org → trustmcp.app.
+#
+# Deploy: push this repo to GitHub, then in the Render dashboard:
+#   New +  →  Blueprint  →  pick this repo  →  Apply.
+# Render reads this file, provisions everything, and wires the env vars below.
+#
+# After the first deploy, set the two `sync: false` secrets and attach the
+# custom domains (see DEPLOY.md for the full, click-by-click guide):
+#   trustmcp-web      → trustmcp.app , www.trustmcp.app
+#   trustmcp-network  → network.trustmcp.app
+#   trustmcp-docs     → docs.trustmcp.app
+#   trustmcp-org      → trustmcp.org , www.trustmcp.org   (redirects to .app)
+# ---------------------------------------------------------------------------
+
+databases:
+  - name: trustmcp-db
+    databaseName: trustmcp
+    user: trustmcp
+    plan: basic-256mb
+    region: oregon
+
+services:
+  # --- Reference network API (Python / FastAPI) ----------------------------
+  - type: web
+    name: trustmcp-network
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./apps/network/Dockerfile
+    dockerContext: ./apps/network
+    healthCheckPath: /health
+    autoDeploy: true
+    # Artifacts are stored on a persistent disk by default (no S3 needed to get
+    # started). Swap to S3/R2 for multi-instance scaling — see envVars below.
+    disk:
+      name: trustmcp-artifacts
+      mountPath: /app/.data
+      sizeGB: 1
+    envVars:
+      - key: TRUSTMCP_ENVIRONMENT
+        value: production
+      - key: TRUSTMCP_DATABASE_URL
+        fromDatabase:
+          name: trustmcp-db
+          property: connectionString
+      - key: TRUSTMCP_PUBLIC_BASE_URL
+        value: https://network.trustmcp.app
+      # Shared secret the web app uses to manage vendors. Generated once, then
+      # mirrored into trustmcp-web via fromService below.
+      - key: TRUSTMCP_SERVICE_TOKEN
+        generateValue: true
+      # Stable Ed25519 signing key (base64 of a 32-byte seed). Generate with:
+      #   openssl rand -base64 32
+      # DO NOT rotate casually — consumers pin signatures to it. REQUIRED: in
+      # production the network refuses to boot without it (Settings.validate_for_production)
+      # — otherwise it would fall back to an ephemeral per-process key and signatures
+      # would be unverifiable across restarts/replicas.
+      - key: TRUSTMCP_SIGNING_PRIVATE_KEY
+        sync: false
+      # Local-disk artifact storage (the disk mounted above).
+      - key: TRUSTMCP_STORAGE_LOCAL_DIR
+        value: /app/.data/artifacts
+      # --- Optional: S3 / Cloudflare R2 instead of the local disk ----------
+      - key: TRUSTMCP_S3_BUCKET
+        sync: false
+      - key: TRUSTMCP_S3_REGION
+        sync: false
+      - key: TRUSTMCP_S3_ENDPOINT_URL
+        sync: false
+      - key: TRUSTMCP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: TRUSTMCP_S3_SECRET_ACCESS_KEY
+        sync: false
+      # --- Optional: email (owner notifications + freshness nudges) --------
+      - key: TRUSTMCP_SMTP_HOST
+        sync: false
+      - key: TRUSTMCP_SMTP_USERNAME
+        sync: false
+      - key: TRUSTMCP_SMTP_PASSWORD
+        sync: false
+      - key: TRUSTMCP_SMTP_FROM
+        value: TrustMCP <no-reply@trustmcp.org>
+      # --- Optional: CRM auto-release --------------------------------------
+      - key: TRUSTMCP_HUBSPOT_TOKEN
+        sync: false
+      # --- Optional: "Ask a question" AI assistant -------------------------
+      # When set, the public trust center's chat widget answers questions grounded
+      # in the published profile. Leave unset to disable the widget gracefully.
+      - key: TRUSTMCP_ANTHROPIC_API_KEY
+        sync: false
+      # Google Drive one-click connect. Set both and trust-center owners connect
+      # their folder by clicking through Google's consent screen instead of
+      # pasting a service-account key. Register
+      # https://trustmcp.app/api/integrations/drive/callback as an authorized
+      # redirect URI on the OAuth client, or Google refuses with
+      # redirect_uri_mismatch. Leave unset to keep the paste-your-own-credentials
+      # path only.
+      - key: TRUSTMCP_GOOGLE_CLIENT_ID
+        sync: false
+      - key: TRUSTMCP_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: TRUSTMCP_ASK_MODEL
+        value: claude-opus-4-8
+      # Web base URL — used to link to the public trust center in subscriber emails.
+      - key: TRUSTMCP_WEB_BASE_URL
+        value: https://trustmcp.app
+      # --- Optional: Docusign e-signature for self-service DPAs -------------
+      # JWT-grant (impersonation). When set, submitted DPAs become real signature
+      # envelopes sent to the signer; status syncs back via a Docusign Connect
+      # webhook to POST {network}/v1/esign/webhook. Unset → capture-and-notify.
+      - key: TRUSTMCP_DOCUSIGN_ACCOUNT_ID
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_INTEGRATION_KEY
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_USER_ID
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_PRIVATE_KEY
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_AUTH_HOST
+        value: account.docusign.com
+      - key: TRUSTMCP_DOCUSIGN_BASE_URI
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_DPA_TEMPLATE_ID
+        sync: false
+      - key: TRUSTMCP_DOCUSIGN_CONNECT_HMAC_KEY
+        sync: false
+      # --- Custom-domain TLS issuance (Render API) -------------------------
+      # When set, verified customer domains (trust.acme.com) are registered via the
+      # Render API so Render issues their certificates, and the
+      # trustmcp-cert-provisioner cron flips status to "active" once live.
+      # IMPORTANT: TRUSTMCP_RENDER_SERVICE_ID must be the **trustmcp-web** service id
+      # (srv-…) — the app that actually serves the trust-center HTML on the custom
+      # domain — NOT this network service. cname.trustmcp.app must also CNAME to
+      # trustmcp-web.onrender.com. The API key needs custom-domain write scope.
+      # Unset → status stays honest, but no certificate is requested.
+      - key: TRUSTMCP_RENDER_API_KEY
+        sync: false
+      - key: TRUSTMCP_RENDER_SERVICE_ID
+        sync: false
+      # --- Optional: error tracking ----------------------------------------
+      - key: TRUSTMCP_SENTRY_DSN
+        sync: false
+
+  # --- Web app: Trust Center builder + public pages (Next.js) --------------
+  - type: web
+    name: trustmcp-web
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Shares the database with the network API. The web entrypoint pins Prisma
+      # to a dedicated `web` schema (the network's tables live in `public`), so
+      # the plain connection string from fromDatabase is fine here.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: trustmcp-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_URL
+        value: https://trustmcp.app
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://trustmcp.app
+      - key: TRUSTMCP_NETWORK_URL
+        value: https://network.trustmcp.app
+      # Mirror the network's service token so web ↔ network trust each other.
+      - key: TRUSTMCP_SERVICE_TOKEN
+        fromService:
+          name: trustmcp-network
+          type: web
+          envVarKey: TRUSTMCP_SERVICE_TOKEN
+      - key: EMAIL_FROM
+        value: TrustMCP <no-reply@trustmcp.org>
+      # --- Optional: sign-in providers (set whichever you use) -------------
+      - key: EMAIL_SERVER
+        sync: false
+      - key: AUTH_GITHUB_ID
+        sync: false
+      - key: AUTH_GITHUB_SECRET
+        sync: false
+      - key: AUTH_GOOGLE_ID
+        sync: false
+      - key: AUTH_GOOGLE_SECRET
+        sync: false
+      # --- Optional: enterprise SSO (OIDC) ---------------------------------
+      - key: SSO_ISSUER
+        sync: false
+      - key: SSO_NAME
+        sync: false
+      - key: SSO_CLIENT_ID
+        sync: false
+      - key: SSO_CLIENT_SECRET
+        sync: false
+      # --- Optional: product analytics (PostHog) ---------------------------
+      # NOTE: every NEXT_PUBLIC_* var below (and the SENTRY_* source-map inputs)
+      # is inlined into the client bundle at *build* time. apps/web/Dockerfile
+      # declares matching ARGs so Render forwards these as build args; setting
+      # them requires a redeploy (rebuild) to take effect, not just a restart.
+      - key: NEXT_PUBLIC_POSTHOG_KEY
+        sync: false
+      - key: NEXT_PUBLIC_POSTHOG_HOST
+        value: https://us.i.posthog.com
+      # --- Optional: error tracking (Sentry) -------------------------------
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ORG
+        sync: false
+      - key: SENTRY_PROJECT
+        sync: false
+      - key: SENTRY_AUTH_TOKEN
+        sync: false
+      # --- Optional: Trust Center AI Migration -----------------------------
+      # Imports an existing/external trust center by driving a Browserbase
+      # session with Stagehand (AI browsing) and copying its documents and
+      # content in. Requires all three keys below; reuses TRUSTMCP_ANTHROPIC_API_KEY
+      # (set above for the Ask widget) for both the browsing model and labeling.
+      - key: BROWSERBASE_API_KEY
+        sync: false
+      - key: BROWSERBASE_PROJECT_ID
+        sync: false
+      - key: TRUSTMCP_ANTHROPIC_API_KEY
+        sync: false
+      - key: TRUSTMCP_MIGRATION_MODEL
+        value: claude-opus-4-8
+
+  # --- Public documentation site (Next.js + MDX) ---------------------------
+  - type: web
+    name: trustmcp-docs
+    runtime: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./apps/docs/Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+  # --- Scheduled freshness nudges (emails vendors before evidence expires) --
+  # Runs daily; reads vendor rows and sends one email per expiring artifact
+  # (idempotent via Artifact.expiry_notified_at). Needs the DB + SMTP only.
+  # NOTE: Render Blueprints can't copy another service's sync:false (secret) env
+  # vars via fromService, so the SMTP secrets are declared sync:false here and must
+  # be set to the same values as trustmcp-network. The job runs `notify_expiring`
+  # directly (the entrypoint execs any passed command), so it does NOT need the
+  # signing key or service token.
+  - type: cron
+    name: trustmcp-freshness-nudge
+    runtime: docker
+    plan: starter
+    region: oregon
+    schedule: "0 13 * * *" # daily at 13:00 UTC
+    dockerfilePath: ./apps/network/Dockerfile
+    dockerContext: ./apps/network
+    dockerCommand: python -m app.notify_expiring
+    envVars:
+      - key: TRUSTMCP_ENVIRONMENT
+        value: production
+      - key: TRUSTMCP_DATABASE_URL
+        fromDatabase:
+          name: trustmcp-db
+          property: connectionString
+      - key: TRUSTMCP_WEB_BASE_URL
+        value: https://trustmcp.app
+      # Set these to the same SMTP values as the trustmcp-network service.
+      - key: TRUSTMCP_SMTP_HOST
+        sync: false
+      - key: TRUSTMCP_SMTP_USERNAME
+        sync: false
+      - key: TRUSTMCP_SMTP_PASSWORD
+        sync: false
+      - key: TRUSTMCP_SMTP_FROM
+        value: TrustMCP <no-reply@trustmcp.org>
+
+  # --- Google Drive sync ---------------------------------------------------
+  # Syncs every trust center whose linked Drive folder is set to sync
+  # automatically. Discovery is cheap and publication is gated on the owner's
+  # prior decision, so running this often is safe: files nobody has approved
+  # simply sit in the review queue. Needs the DB and object storage (the same
+  # values as trustmcp-network), plus the public base URL so OSCAL change
+  # webhooks carry resolvable pull links.
+  - type: cron
+    name: trustmcp-drive-sync
+    runtime: docker
+    plan: starter
+    region: oregon
+    schedule: "*/30 * * * *" # every 30 minutes
+    dockerfilePath: ./apps/network/Dockerfile
+    dockerContext: ./apps/network
+    dockerCommand: python -m app.sync_drive
+    envVars:
+      - key: TRUSTMCP_ENVIRONMENT
+        value: production
+      - key: TRUSTMCP_DATABASE_URL
+        fromDatabase:
+          name: trustmcp-db
+          property: connectionString
+      - key: TRUSTMCP_PUBLIC_BASE_URL
+        value: https://network.trustmcp.app
+      # Set these to the same object-storage values as the trustmcp-network
+      # service — synced documents are written to the same bucket.
+      - key: TRUSTMCP_S3_BUCKET
+        sync: false
+      - key: TRUSTMCP_S3_REGION
+        sync: false
+      - key: TRUSTMCP_S3_ENDPOINT_URL
+        sync: false
+      - key: TRUSTMCP_S3_ACCESS_KEY_ID
+        sync: false
+      - key: TRUSTMCP_S3_SECRET_ACCESS_KEY
+        sync: false
+      # Signs the local-storage fallback URLs; must match trustmcp-network.
+      - key: TRUSTMCP_SERVICE_TOKEN
+        sync: false
+
+  # --- Custom-domain certificate provisioner -------------------------------
+  # Runs often; for each verified custom domain that isn't live yet it re-registers
+  # the domain on trustmcp-network (so Render issues the cert) and flips the stored
+  # status to "active" once HTTPS actually serves. Idempotent. Needs the DB plus the
+  # same Render API credentials as trustmcp-network (set to the same values).
+  - type: cron
+    name: trustmcp-cert-provisioner
+    runtime: docker
+    plan: starter
+    region: oregon
+    schedule: "*/10 * * * *" # every 10 minutes
+    dockerfilePath: ./apps/network/Dockerfile
+    dockerContext: ./apps/network
+    dockerCommand: python -m app.provision_certs
+    envVars:
+      - key: TRUSTMCP_ENVIRONMENT
+        value: production
+      - key: TRUSTMCP_DATABASE_URL
+        fromDatabase:
+          name: trustmcp-db
+          property: connectionString
+      - key: TRUSTMCP_RENDER_API_KEY
+        sync: false
+      - key: TRUSTMCP_RENDER_SERVICE_ID
+        sync: false
+
+  # --- trustmcp.org → trustmcp.app redirect (tiny static site) -------------
+  - type: web
+    name: trustmcp-org
+    runtime: static
+    buildCommand: mkdir -p public && echo '<!doctype html><title>TrustMCP</title><meta http-equiv="refresh" content="0; url=https://trustmcp.app">' > public/index.html
+    staticPublishPath: ./public
+    routes:
+      - type: redirect
+        source: /*
+        destination: https://trustmcp.app/:splat

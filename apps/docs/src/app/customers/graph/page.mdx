@@ -1,0 +1,27 @@
+# Supply-chain (nth-party) graph
+
+A vendor's subprocessors may themselves publish TrustMCP profiles. When a subprocessor's
+domain matches a published vendor, TrustMCP links them - so an agent can **traverse the
+supply chain** and assess nth-party risk.
+
+```
+GET /v1/vendors/{vid}/graph        (scope: attestations)
+```
+
+```json
+{
+  "vendor_id": "vnd_acme",
+  "subprocessors": [
+    { "name": "SubProc Inc", "domain": "subproc.example",
+      "linked_vendor": { "vendor_id": "vnd_subproc", "legal_name": "SubProc Inc", "mark": "agent-ready" } },
+    { "name": "Unlinked Co", "domain": "nowhere.example", "linked_vendor": null }
+  ]
+}
+```
+
+For each linked subprocessor, an agent can repeat the assessment loop against
+`linked_vendor.vendor_id` - request access, read the manifest/attestations, and roll the
+result up. Unlinked subprocessors fall back to manual review.
+
+Vendors populate the `domain` field on each subprocessor in the **Subprocessors** editor;
+that domain is what the network resolves against published profiles.

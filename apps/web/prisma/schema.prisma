@@ -1,0 +1,153 @@
+// TrustMCP web app database. Stores auth, orgs, and the mapping from an org's trust
+// center to its network vendor id + owner token. The assurance evidence itself
+// lives in the TrustMCP Network, never here.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Auth.js (NextAuth) models ---
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  memberships   Membership[]
+  createdAt     DateTime     @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- TrustMCP domain models ---
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  // Email domains (e.g. "acme.com") whose users auto-join this workspace on
+  // sign-in with the role below. Empty = no automatic membership.
+  allowedDomains String[]    @default([])
+  // Role granted to users who auto-join via a whitelisted domain.
+  domainJoinRole String      @default("viewer")
+  createdAt    DateTime      @default(now())
+  memberships  Membership[]
+  trustCenters TrustCenter[]
+  invitations  Invitation[]
+}
+
+model Invitation {
+  id          String       @id @default(cuid())
+  orgId       String
+  email       String
+  role        String       @default("viewer") // admin | reviewer | viewer
+  token       String       @unique
+  status      String       @default("pending") // pending | accepted | revoked
+  invitedById String
+  createdAt   DateTime     @default(now())
+  expiresAt   DateTime
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([orgId])
+}
+
+model Membership {
+  id        String       @id @default(cuid())
+  userId    String
+  orgId     String
+  role      String       @default("owner") // owner | admin | reviewer | viewer
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+}
+
+// Maps an org's trust center to its network vendor. The owner token authenticates
+// management calls to the TrustMCP Network and is held only server-side.
+model TrustCenter {
+  id          String       @id @default(cuid())
+  orgId       String
+  vendorId    String       @unique
+  ownerToken  String
+  legalName   String
+  createdById String
+  createdAt   DateTime     @default(now())
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
+
+// Tracks a "Trust Center AI Migration": importing an existing/external trust
+// center into this one. A Browserbase session crawls the source URL, requests
+// documentation (signing an NDA if required), pauses for the source owner to
+// release documents, and on Resume pulls everything in and copies it over.
+// Lives in the web DB (not the network) because the pause/resume happens in
+// this dashboard; the imported evidence itself still lands in the network.
+model TrustCenterMigration {
+  id                   String   @id @default(cuid())
+  // Target trust center we are populating (TrustCenter.vendorId).
+  vendorId             String
+  // The existing trust center we are importing from.
+  sourceUrl            String
+  // Who we identify as when requesting access on the source.
+  requesterName        String?
+  requesterEmail       String?
+  requesterCompany     String?
+  // Free-form access details (login hints, invite code, instructions).
+  accessNotes          String?
+  // pending | requesting | awaiting_release | importing | completed | failed
+  status               String   @default("pending")
+  // Human-readable description of the current step or the failure reason.
+  statusDetail         String?
+  // Browserbase session id + live/replay URL so the user can watch the crawl.
+  browserbaseSessionId String?
+  sessionReplayUrl     String?
+  ndaSigned            Boolean  @default(false)
+  importedCount        Int      @default(0)
+  // Structured step log: [{ at, step, detail }].
+  log                  Json?
+  createdById          String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([vendorId])
+}

@@ -1,0 +1,72 @@
+# Local TrustMCP stack: Postgres + MinIO + the network API + the web app.
+#   docker compose up --build
+# Then seed Acme:  docker compose exec network python -m app.seed
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trustmcp
+      POSTGRES_PASSWORD: trustmcp
+      POSTGRES_DB: trustmcp
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trustmcp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["minio-data:/data"]
+
+  createbucket:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+      /usr/bin/mc mb -p local/trustmcp-artifacts || true;
+      exit 0;
+      "
+
+  network:
+    build: ./apps/network
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      TRUSTMCP_ENVIRONMENT: development
+      TRUSTMCP_DATABASE_URL: postgresql+psycopg://trustmcp:trustmcp@db:5432/trustmcp
+      TRUSTMCP_PUBLIC_BASE_URL: http://localhost:8000
+      TRUSTMCP_SERVICE_TOKEN: dev-service-token
+      TRUSTMCP_S3_BUCKET: trustmcp-artifacts
+      TRUSTMCP_S3_ENDPOINT_URL: http://minio:9000
+      TRUSTMCP_S3_ACCESS_KEY_ID: minioadmin
+      TRUSTMCP_S3_SECRET_ACCESS_KEY: minioadmin
+      TRUSTMCP_S3_REGION: us-east-1
+    ports: ["8000:8000"]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgresql://trustmcp:trustmcp@db:5432/trustmcp?schema=web
+      AUTH_SECRET: dev-secret-change-me-dev-secret-change
+      AUTH_URL: http://localhost:3000
+      AUTH_DEV_LOGIN: "1"
+      TRUSTMCP_NETWORK_URL: http://network:8000
+      TRUSTMCP_SERVICE_TOKEN: dev-service-token
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports: ["3000:3000"]
+
+volumes:
+  pgdata:
+  minio-data:

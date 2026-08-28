@@ -1,0 +1,32 @@
+# Reviewing requests & insights
+
+The **Requests** page is your steady-state workspace once a trust center is live.
+
+## Recommendations (the approval agent)
+
+Every pending request shows an automated **recommendation** - `recommend approve`,
+`review`, or `caution` - with the reasons behind it. The engine is deterministic and
+combines:
+
+- CRM relationship (existing customer in HubSpot/Salesforce → strong positive; no match
+  → caution)
+- a contract uploaded as proof of agreement
+- NDA acceptance
+- the auto-approve domain allowlist
+
+It's advisory: you (or an agent) still click approve. Approving mints a scoped, expiring
+key; you can **limit it to specific artifacts** at approval time.
+
+## Issued keys & history
+
+- **Issued keys** lists every active/revoked key with scope, expiry, and last-used time -
+  revoke any of them instantly.
+- **History** shows past decisions (granted/denied), whether they were **auto** (and via
+  which policy) or **manual**, and when.
+
+## Insights
+
+The **Insights** page aggregates your audit log into a request funnel
+(pending/granted/denied/auto), active vs revoked keys, total reads, **most-read
+artifacts**, **most active readers**, and recent activity - so you can see how your
+evidence is actually being consumed. Export the raw log as CSV/JSON from **Audit log**.

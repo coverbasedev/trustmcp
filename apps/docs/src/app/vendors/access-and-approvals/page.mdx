@@ -1,0 +1,29 @@
+# Access & approvals
+
+You control who reads your profile. The flow:
+
+1. A customer submits a request from your public trust page (or via MCP `request_access`).
+2. You see it under **Access requests**, with a **CRM relationship badge**
+   (HubSpot/Salesforce) to assist the decision.
+3. On **approve**, the network mints a **scoped, expiring** key; the requester is emailed
+   the key. On **deny**, they're emailed a notice.
+4. **Revoke** any key at any time - reads stop immediately and show in the audit log.
+
+## Per-artifact access scopes
+
+When approving, you can restrict a key to **specific artifacts** (checkboxes in the
+request card). The key then reads only those documents within its scope; other artifact
+fetches return `403`. Leave all unchecked for full access within scope.
+
+## Notifications
+
+Set a **notification email** in **Settings** and enable *"email me on every access
+request."* This fires for **every** channel - web, API, and MCP - not just the web form.
+
+## Audit log & export
+
+Every read and management action is recorded, including which key read which artifact.
+Export from the **Audit log** page as **CSV** or **JSON**, or via
+`GET /v1/vendors/{id}/audit.csv`.
+
+Want fewer manual approvals? See **[auto-release policies](/vendors/auto-release)**.

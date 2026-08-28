@@ -1,0 +1,28 @@
+# REST integration
+
+Read a profile directly over HTTPS with a bearer access key. See the full
+**[API reference](/reference/api)**.
+
+```bash
+# Manifest (scope: manifest)
+curl https://network.trustmcp.app/v1/vendors/vnd_acme/manifest \
+  -H "Authorization: Bearer tmcp_live_..."
+
+# Structured attestations (scope: attestations)
+curl https://network.trustmcp.app/v1/vendors/vnd_acme/attestations \
+  -H "Authorization: Bearer tmcp_live_..."
+
+# A single artifact -> short-lived signed URL + expected hash (scope: artifacts)
+curl https://network.trustmcp.app/v1/vendors/vnd_acme/artifacts/art_soc2_2026 \
+  -H "Authorization: Bearer tmcp_live_..."
+
+# Freshness across every artifact
+curl https://network.trustmcp.app/v1/vendors/vnd_acme/freshness \
+  -H "Authorization: Bearer tmcp_live_..."
+```
+
+Always verify downloaded bytes against the `sha256` from the manifest before trusting an
+artifact. Keys are scoped (`manifest` / `attestations` / `artifacts`), may be restricted
+to specific artifacts, expire, and can be revoked at any time.
+
+TypeScript users can use the **`@trustmcp/sdk`** client instead of raw `fetch`.

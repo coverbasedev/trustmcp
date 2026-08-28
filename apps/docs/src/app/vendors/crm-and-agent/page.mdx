@@ -1,0 +1,185 @@
+# Connect HubSpot or Salesforce
+
+Connecting your CRM lets TrustMCP recognise existing customers automatically. When
+someone requests access to private evidence, the network checks whether their email
+domain is already an **account/company** in your CRM, and uses that to:
+
+- **Auto-release** - grant a scoped key on the spot when the requester is a customer, and
+- **Recommend** - feed the approval agent's suggestion (`approve` / `review` / `caution`)
+  on every pending request.
+
+The check runs on **every channel** - web, REST, and MCP - and matches on the requester's
+**email domain** (e.g. `jordan@globex.com` → `globex.com`). Credentials are yours and
+scoped to this one trust center; they're stored server-side and never shown again once
+saved.
+
+---
+
+## Where this lives in the dashboard
+
+Open your trust center, then use the top navigation:
+
+1. **Settings** group → **Connections** tab. The **CRM auto-release (HubSpot /
+   Salesforce)** row shows whether it's `on` or `off`. Click **Settings** on that row.
+2. On the **Settings** page you'll use three cards, in order:
+   - **CRM connection** - where you pick the provider and paste credentials *(this page)*.
+   - **Auto-release policies** - the *"Auto-release if the requester is a customer in our
+     CRM"* checkbox.
+   - **Approval agent** *(optional)* - let the agent auto-grant confident requests.
+3. Click **Save settings** at the bottom. The Connections row flips to `on`.
+
+The **CRM connection** card only shows the fields relevant to your current choices, so
+the steps below match exactly what you'll see.
+
+---
+
+## Connect HubSpot
+
+You need a **private-app token** with company read access.
+
+### 1. Create a private app in HubSpot
+
+1. In HubSpot, go to **Settings** (gear icon) → **Integrations** → **Private Apps** →
+   **Create a private app**.
+2. Give it a name (e.g. `TrustMCP relationship check`).
+3. On the **Scopes** tab, add **`crm.objects.companies.read`**. That's the only scope
+   required - the check is read-only.
+4. **Create app**, confirm, and copy the **access token** (it looks like
+   `pat-na1-…`).
+
+### 2. Paste it into TrustMCP
+
+On **Settings → CRM connection**:
+
+1. **Provider** → **HubSpot**.
+2. **Connection method** → **API token**.
+3. **API token** → paste the `pat-na1-…` token.
+4. **Save settings**.
+
+TrustMCP looks up companies by their **`domain`** property (exact match). Make sure your
+HubSpot companies have the `domain` field populated for the customers you want recognised.
+
+---
+
+## Connect Salesforce
+
+You need your **instance URL** and a valid **OAuth access token** that can query
+**Accounts**.
+
+### 1. Get an access token
+
+Any OAuth access token for a user/integration with read access to Accounts works. A
+common setup is a **Connected App** using the OAuth client-credentials or JWT-bearer flow:
+
+1. In Salesforce **Setup** → **App Manager** → **New Connected App**.
+2. Enable **OAuth Settings**, add the **`api`** scope, and choose a flow that issues an
+   access token without interactive login (client-credentials or JWT bearer).
+3. Note your **instance URL** - e.g. `https://yourorg.my.salesforce.com` - and obtain a
+   current **access token** (starts with `00D…`).
+
+> Salesforce access tokens are short-lived. If you paste a raw token, re-paste it when it
+> expires - or use the **MCP server** method below to delegate token handling to a
+> connector that refreshes automatically.
+
+### 2. Paste it into TrustMCP
+
+On **Settings → CRM connection**:
+
+1. **Provider** → **Salesforce**.
+2. **Connection method** → **API token**.
+3. **Salesforce instance URL** → `https://yourorg.my.salesforce.com`.
+4. **API token** → paste the access token.
+5. **Save settings**.
+
+The check runs `SELECT Id, Name FROM Account WHERE Website LIKE '%domain%'`, so make sure
+your Accounts have the **Website** field set for the customers you want recognised.
+
+---
+
+## Connect via an MCP server (advanced)
+
+Instead of pasting a static API token, you can point TrustMCP at **your own CRM MCP
+server** - useful when you already run one or want token refresh handled for you. On
+**Settings → CRM connection**:
+
+1. **Provider** → HubSpot or Salesforce (this just labels the result).
+2. **Connection method** → **MCP server**.
+3. **MCP server URL** → a Streamable-HTTP MCP endpoint (e.g.
+   `https://your-crm.example.com/mcp`). TrustMCP queries it for a company/account by
+   domain.
+4. **MCP authentication** - pick one:
+   - **OAuth (client credentials)** - fill **Token URL**, **Client ID**, and **Client
+     secret**. TrustMCP exchanges these for an access token via the client-credentials
+     grant on each check.
+   - **Bearer token** - paste a static token sent as `Authorization: Bearer …`.
+5. **Save settings**.
+
+Secrets (bearer token, client secret) are write-only: leave them blank on a later save to
+keep the existing value.
+
+---
+
+## Turn on auto-release
+
+Connecting the CRM only enables the *lookup*. To actually grant keys automatically, still
+on **Settings**:
+
+1. In **Auto-release policies**, check **"Auto-release if the requester is a customer in
+   our CRM (HubSpot / Salesforce)"**.
+2. **Save settings**.
+
+Now when a requester whose domain matches an account/company asks for access,
+`POST /v1/keys/request` returns `{"status":"granted","key":…}` immediately - across web,
+API, and MCP. Auto-granted keys are still **scoped, expiring, and revocable**, and each
+grant is logged with reason `crm:hubspot` or `crm:salesforce`.
+
+Other auto-release policies (preconfigured domains, contract upload) live in the same
+card - see [Auto-release policies](/vendors/auto-release).
+
+---
+
+## The approval agent
+
+Even without auto-release, every pending request gets a deterministic **recommendation** -
+`approve`, `review`, or `caution` - shown with its reasons on the **Requests** page. A CRM
+match is a strong positive (`existing customer in hubspot`); no match contributes a
+caution. The recommendation also folds in contract proof, NDA acceptance, and the domain
+allowlist.
+
+Two ways to act on it:
+
+- **Apply recommendation** - a one-click button on each pending request that approves
+  (for `approve`) or denies (for `caution`).
+- **Auto-pilot** - enable **"Let the approval agent auto-grant confident requests"** in
+  the **Approval agent** card. Any request whose recommendation is a confident `approve`
+  (e.g. existing CRM customer + NDA accepted) is granted on arrival, across every channel.
+  Auto-grants are logged with reason `agent:recommendation`, and you can revoke at any
+  time.
+
+The agent never denies automatically - it only grants high-confidence requests; anything
+short of that stays pending for a human.
+
+---
+
+## How matching & precedence work
+
+- **Matching** is by the requester's **email domain**. HubSpot matches the company
+  **`domain`** property exactly; Salesforce matches the Account **Website** with a
+  `LIKE '%domain%'`.
+- **Per-vendor credentials win.** What you set here takes precedence over any
+  network-wide CRM configuration; the network-global config (if the operator set one) is
+  only a fallback. See [CRM verification](https://github.com/trustmcp/trustmcp/blob/main/docs/crm-verification.md)
+  for the self-hosting/network-global path.
+- **Advisory by default.** Verification informs the recommendation; a key is only minted
+  when a human approves *or* an auto-release/auto-pilot policy you enabled matches.
+
+## Troubleshooting
+
+- **A known customer shows "not in CRM"** - confirm the matching field is populated:
+  HubSpot company **`domain`**, Salesforce Account **Website**. The lookup uses the bare
+  host (no `https://`, no path).
+- **Salesforce stops matching after a while** - the access token likely expired. Re-paste
+  a fresh token, or switch to the **MCP server** method with OAuth client-credentials.
+- **No badge / "CRM: n/a"** - no provider is configured for this trust center yet, or the
+  token call failed (e.g. a wrong scope returns an HTTP error and is treated as "no
+  match").

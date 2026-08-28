@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trustmcp.org/schemas/0.1/access-key.schema.json",
+  "title": "TrustMCP Access Key request / grant",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/pending" },
+    { "$ref": "#/$defs/granted" },
+    { "$ref": "#/$defs/revoked" }
+  ],
+  "$defs": {
+    "scope": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["manifest", "attestations", "artifacts"] },
+      "minItems": 1
+    },
+    "requester": {
+      "type": "object",
+      "required": ["name", "domain", "contact"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "domain": { "type": "string" },
+        "contact": { "type": "string" }
+      }
+    },
+    "request": {
+      "type": "object",
+      "required": ["vendor_id", "requester", "scope"],
+      "additionalProperties": false,
+      "properties": {
+        "vendor_id": { "type": "string", "pattern": "^vnd_[a-z0-9_]+$" },
+        "requester": { "$ref": "#/$defs/requester" },
+        "scope": { "$ref": "#/$defs/scope" }
+      }
+    },
+    "pending": {
+      "type": "object",
+      "required": ["status", "request_id", "vendor_id"],
+      "properties": {
+        "status": { "const": "pending" },
+        "request_id": { "type": "string" },
+        "vendor_id": { "type": "string" }
+      }
+    },
+    "granted": {
+      "type": "object",
+      "required": ["status", "vendor_id", "key", "scope", "expires_at"],
+      "properties": {
+        "status": { "const": "granted" },
+        "vendor_id": { "type": "string" },
+        "key": { "type": "string", "pattern": "^tmcp_(live|test)_" },
+        "scope": { "$ref": "#/$defs/scope" },
+        "expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "revoked": {
+      "type": "object",
+      "required": ["status", "key_id"],
+      "properties": {
+        "status": { "const": "revoked" },
+        "key_id": { "type": "string" }
+      }
+    }
+  }
+}

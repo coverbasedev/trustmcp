@@ -1,0 +1,56 @@
+{
+  "schema_version": "0.1",
+  "vendor": {
+    "id": "vnd_acme",
+    "legal_name": "Acme Corp",
+    "domains": ["acme.com"],
+    "product": "Acme Platform"
+  },
+  "published_at": "2026-06-01T00:00:00Z",
+  "artifacts": [
+    {
+      "id": "art_soc2_2026",
+      "type": "soc2_type2",
+      "title": "SOC 2 Type II Report",
+      "issued_at": "2026-01-15",
+      "valid_until": "2027-01-15",
+      "scope": "Acme Platform, US regions",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "access": "key_required",
+      "uri": "/v1/vendors/vnd_acme/artifacts/art_soc2_2026"
+    },
+    {
+      "id": "art_pentest_2026q1",
+      "type": "pentest",
+      "title": "Q1 2026 Penetration Test",
+      "issued_at": "2026-03-02",
+      "valid_until": "2027-03-02",
+      "sha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+      "access": "key_required",
+      "uri": "/v1/vendors/vnd_acme/artifacts/art_pentest_2026q1"
+    },
+    {
+      "id": "art_coi_2026",
+      "type": "insurance_coi",
+      "title": "Certificate of Insurance",
+      "issued_at": "2026-04-10",
+      "valid_until": "2027-04-10",
+      "sha256": "2c26b46b68ffc68ff99b453c1d304134934e6f2e8718a3c5d3d2c6f5f3f4f5a6",
+      "access": "key_required",
+      "uri": "/v1/vendors/vnd_acme/artifacts/art_coi_2026"
+    },
+    {
+      "id": "art_sbom_core",
+      "type": "sbom",
+      "format": "cyclonedx-1.5",
+      "title": "Core Platform SBOM",
+      "issued_at": "2026-05-20",
+      "valid_until": null,
+      "sha256": "486ea46224d1bb4fb680f34f7c9ad96a8f24ec88be73ea8e5a6c65260e9cb8a7",
+      "access": "key_required",
+      "uri": "/v1/vendors/vnd_acme/artifacts/art_sbom_core"
+    }
+  ],
+  "attestations_uri": "/v1/vendors/vnd_acme/attestations",
+  "subprocessors_uri": "/v1/vendors/vnd_acme/subprocessors"
+}

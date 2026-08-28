@@ -1,0 +1,37 @@
+# Teams & roles
+
+A trust center belongs to a **workspace** (organization). Invite teammates so more than
+one person can manage your evidence and access requests.
+
+## Roles
+
+| Role | Can do |
+|------|--------|
+| **Owner** | Everything, including managing the team. Assigned to the workspace creator. |
+| **Admin** | Full management: edit branding/artifacts/attestations, verify domains, approve/revoke access, change settings, invite teammates. |
+| **Member** | Read-only: view the builder, evidence, and audit log. Cannot change anything or approve access. |
+
+Members can access **all trust centers** in the workspace.
+
+## Inviting teammates
+
+On the **Team** page, enter an email and pick a role, then **Send invite**. The invitee
+gets an email with a secure link (valid 14 days). When they sign in and accept, they
+join the workspace with the chosen role.
+
+Owners and admins can also **change a member's role** (admin ↔ member) or **remove** a
+member. The last owner can't be removed.
+
+## Enforcement
+
+Permissions are enforced on the server: every management action checks that the caller
+is an owner or admin of the trust center's workspace. Members receive a read-only view.
+The pure permission logic is unit-tested (`apps/web/test/roles.test.ts`).
+
+## Enterprise SSO
+
+Sign-in supports a generic **OIDC** provider, so you can put TrustMCP behind your IdP -
+**Okta, Microsoft Entra ID, Auth0, or Google Workspace** (and SAML-capable IdPs via
+their OIDC endpoints). Set `SSO_ISSUER`, `SSO_CLIENT_ID`, `SSO_CLIENT_SECRET` (and an
+optional `SSO_NAME`); a "Continue with SSO" button then appears on the login page
+alongside GitHub/Google/email. Callback URL: `https://<app>/api/auth/callback/sso`.

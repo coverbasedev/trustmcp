@@ -1,0 +1,8 @@
+{
+  "schema_version": "0.1",
+  "vendor_id": "vnd_acme",
+  "legal_name": "Acme Corp",
+  "network": "https://network.trustmcp.app",
+  "manifest": "https://network.trustmcp.app/v1/vendors/vnd_acme/manifest",
+  "mark": "agent-ready"
+}

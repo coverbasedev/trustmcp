@@ -1,0 +1,13 @@
+{
+  "schema_version": "0.1",
+  "vendor_id": "vnd_acme",
+  "generated_at": "2026-06-01T00:00:00Z",
+  "claims": [
+    { "key": "mfa.enforced", "value": true, "evidence": ["art_soc2_2026"] },
+    { "key": "encryption.at_rest", "value": "AES-256", "evidence": ["art_soc2_2026"] },
+    { "key": "encryption.in_transit", "value": "TLS 1.2+", "evidence": ["art_soc2_2026"] },
+    { "key": "data_residency", "value": ["US", "EU"], "evidence": ["art_architecture"] },
+    { "key": "breach_notification_hours", "value": 72, "evidence": ["art_dpa"] },
+    { "key": "subprocessors.count", "value": 11, "evidence": ["art_subprocessor_list"] }
+  ]
+}

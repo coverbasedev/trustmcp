@@ -1,0 +1,26 @@
+# Attestations
+
+Structured claims let agents reason without parsing every PDF. In **Attestations**,
+each row is a `key`, a `value`, and `evidence` (artifact ids backing the claim).
+
+| Key | Value | Evidence |
+|-----|-------|----------|
+| `mfa.enforced` | `true` | `art_soc2_…` |
+| `encryption.at_rest` | `AES-256` | `art_soc2_…` |
+| `data_residency` | `US, EU` | `art_architecture` |
+| `breach_notification_hours` | `72` | `art_dpa` |
+
+## Value parsing
+
+- `true` / `false` → boolean
+- a number → number
+- a comma-separated list → array of strings
+- anything else → string
+
+## Reserved namespaces (v0, open/extensible)
+
+`mfa.*`, `encryption.*`, `data_residency`, `breach_notification_hours`,
+`subprocessors.*`, `availability.*`, `bcp_dr.*`, `access_control.*`, `compliance.*`.
+
+Saving replaces the full set of claims. Customers map your claim keys onto their own
+controls - see **[the assessment loop](/customers/assessment-loop)**.

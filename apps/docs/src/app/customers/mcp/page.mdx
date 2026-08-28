@@ -1,0 +1,71 @@
+# MCP server
+
+The reference MCP server exposes TrustMCP as tools so any agent can run an assessment through
+a single connector. It holds the customer's access keys and talks to the network on the
+agent's behalf.
+
+## Tools
+
+| Tool | Purpose |
+|------|---------|
+| `discover_vendor(domain)` | Resolve a domain to a vendor id + network endpoint. |
+| `request_access(vendor_id, requester, scope)` | Ask the vendor for a key (may auto-grant). |
+| `get_manifest(vendor_id)` | Return the manifest. |
+| `get_attestations(vendor_id, keys?)` | Return structured claims, optionally filtered. |
+| `fetch_artifact(vendor_id, artifact_id)` | Return a signed download link + expected hash. |
+| `check_freshness(vendor_id)` | Return valid / expiring / expired artifacts. |
+| `verify_mark(vendor_id)` | Verify domain ownership + verified domains. |
+
+### OSCAL
+
+| Tool | Purpose |
+|------|---------|
+| `list_oscal_models()` | Every model, format, and alias this network supports. Call it first. |
+| `get_oscal_model(vendor_id, model, format?, frameworks?)` | Any model, any format. |
+| `get_oscal_component_definition(vendor_id)` | The vendor's service and the controls its claims address. |
+| `get_oscal_ssp(vendor_id, framework?)` | Provider-scoped system security plan. |
+| `get_oscal_assessment_plan(vendor_id)` | What the continuous assessment examines. |
+| `get_oscal_assessment_results(vendor_id)` | Observations, findings, and risks right now. |
+| `get_oscal_poam(vendor_id)` | Open gaps as tracked POA&M items. |
+| `get_oscal_bundle(vendor_id)` | Every model at once, with a digest per document. |
+| `get_oscal_catalog()` / `get_oscal_profile(framework)` | The claim vocabulary, and the coverage baseline. |
+| `validate_oscal(document)` | Structural validation of any OSCAL document. |
+
+### Continuous monitoring
+
+| Tool | Purpose |
+|------|---------|
+| `get_oscal_changes(vendor_id, since, models?)` | Everything after a cursor, each change naming what it invalidates. |
+| `poll_oscal_for_changes(vendor_id, since)` | The whole loop in one call: check, then re-pull only what moved. |
+| `subscribe_oscal_changes(vendor_id, url, secret?, models?)` | Register an HMAC-signed webhook. |
+| `list_oscal_subscriptions` / `unsubscribe_oscal_changes` | Manage your subscriptions. |
+
+`poll_oscal_for_changes` is the one to reach for when monitoring a vendor over time — it
+returns the new cursor, the changes, and the re-pulled documents, and nothing at all when
+nothing changed. See [Continuous OSCAL](/customers/oscal-continuous).
+
+## Run it
+
+```bash
+cd mcp/python && uv venv .venv && uv pip install --python .venv -e ".[dev]"
+export TRUSTMCP_NETWORK=https://network.trustmcp.app
+export TRUSTMCP_KEYS='{"vnd_acme":"tmcp_live_..."}'
+uv run trustmcp-mcp
+```
+
+## Register with an agent
+
+```json
+{
+  "mcpServers": {
+    "assurance-network": {
+      "command": "uv",
+      "args": ["run", "trustmcp-mcp"],
+      "env": {
+        "TRUSTMCP_NETWORK": "https://network.trustmcp.app",
+        "TRUSTMCP_KEYS": "{\"vnd_acme\": \"tmcp_live_...\"}"
+      }
+    }
+  }
+}
+```

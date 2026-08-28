@@ -1,0 +1,54 @@
+# Schemas
+
+Canonical JSON Schemas live in
+[`spec/schemas`](https://github.com/trustmcp/trustmcp/tree/main/spec/schemas) and are
+mirrored by the `@trustmcp/spec` (TypeScript/zod) package and the network's pydantic models.
+
+## Discovery record
+
+```json
+{
+  "schema_version": "0.1",
+  "vendor_id": "vnd_acme",
+  "legal_name": "Acme Corp",
+  "network": "https://network.trustmcp.app",
+  "manifest": "https://network.trustmcp.app/v1/vendors/vnd_acme/manifest",
+  "mark": "agent-ready"
+}
+```
+
+## Manifest (artifact)
+
+Required artifact fields: `id`, `type`, `issued_at`, `sha256`, `access`, `uri`. A null
+`valid_until` means no expiry.
+
+```json
+{
+  "id": "art_soc2_2026",
+  "type": "soc2_type2",
+  "issued_at": "2026-01-15",
+  "valid_until": "2027-01-15",
+  "sha256": "e3b0c44298fc1c14…",
+  "access": "key_required",
+  "uri": "/v1/vendors/vnd_acme/artifacts/art_soc2_2026"
+}
+```
+
+## Attestations
+
+```json
+{
+  "schema_version": "0.1",
+  "vendor_id": "vnd_acme",
+  "generated_at": "2026-06-01T00:00:00Z",
+  "claims": [
+    { "key": "mfa.enforced", "value": true, "evidence": ["art_soc2_2026"] }
+  ]
+}
+```
+
+## Freshness
+
+`status` is one of `valid`, `expiring` (inside a configurable window), or `expired`.
+
+Validate your own profiles against the schemas with `pnpm spec:validate`.

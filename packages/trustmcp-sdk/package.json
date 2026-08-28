@@ -1,0 +1,33 @@
+{
+  "name": "@trustmcp/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript client for the TrustMCP Network (server-side: service, owner, and consumer operations).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": { "access": "public" },
+  "repository": { "type": "git", "url": "https://github.com/trustmcp/trustmcp.git", "directory": "packages/trustmcp-sdk" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "echo \"(trustmcp-sdk) lint: noop\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@trustmcp/spec": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

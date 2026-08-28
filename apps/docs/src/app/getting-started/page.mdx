@@ -1,0 +1,43 @@
+# Quickstart
+
+Run the whole stack locally - network API, web app, and a seeded trust center.
+
+## With Docker
+
+```bash
+git clone https://github.com/trustmcp/trustmcp && cd trustmcp
+docker compose up --build
+docker compose exec network python -m app.seed all   # seed Acme + Chime
+```
+
+- Web app: `http://localhost:3000`
+- Network API + docs: `http://localhost:8000/docs`
+- A public trust center: `http://localhost:3000/trust/vnd_acme`
+
+## Piece by piece
+
+```bash
+# Network API
+cd apps/network && uv venv .venv && uv pip install --python .venv -e ".[dev]"
+.venv/bin/python -m app.seed
+.venv/bin/uvicorn app.main:app --port 8000
+
+# Web app (needs Postgres; see apps/web/.env.example)
+pnpm install
+pnpm --filter @trustmcp/web db:push
+pnpm --filter @trustmcp/web dev
+```
+
+## Try the assessment loop
+
+```bash
+cd mcp/python && uv venv .venv && uv pip install --python .venv -e ".[dev]"
+export TRUSTMCP_NETWORK=http://localhost:8000
+export TRUSTMCP_KEYS='{"vnd_acme":"tmcp_live_..."}'   # printed by the seed command
+python demo_assessment.py vnd_acme
+```
+
+You should see the mark verified, the manifest read, claims mapped to controls, an
+artifact hash-verified, and a **locally computed** verdict.
+
+Next: **[the five objects](/concepts/the-five-objects)**.

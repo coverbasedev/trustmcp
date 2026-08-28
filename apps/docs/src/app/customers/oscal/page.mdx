@@ -1,0 +1,194 @@
+# OSCAL
+
+TrustMCP speaks [NIST OSCAL](https://pages.nist.gov/OSCAL) end to end. Every model, every
+format, both directions, and both **point-in-time** and **continuous**.
+
+A trust center already holds what OSCAL wants to describe: what the system is, who runs it,
+which controls the vendor claims, and the evidence behind each claim. The OSCAL surface
+exposes that as the documents your GRC platform already ingests — so vendor assurance stops
+being a PDF someone re-types and becomes a machine-readable exchange your tooling can
+re-pull on a schedule.
+
+## What you can pull
+
+| Model | Endpoint | What it carries |
+| --- | --- | --- |
+| `catalog` | `GET /v1/oscal/catalog` | The TrustMCP claim vocabulary, so claims are addressable by control id |
+| `profile` | `GET /v1/oscal/profile/{framework}` | The baseline of framework controls TrustMCP evidence can speak to |
+| `component-definition` | `GET /v1/vendors/{vid}/oscal/component-definition` | The vendor's service, its product lines and subprocessors, and the controls its claims address |
+| `system-security-plan` | `.../oscal/system-security-plan` | Provider-scoped SSP: system characteristics, components, control implementation |
+| `assessment-plan` | `.../oscal/assessment-plan` | What the continuous assessment examines, and how often |
+| `assessment-results` | `.../oscal/assessment-results` | Observations, findings, and risks at this instant |
+| `plan-of-action-and-milestones` | `.../oscal/plan-of-action-and-milestones` | Open gaps as tracked items with deadlines |
+
+Short aliases work everywhere a model name does: `cdef`, `ssp`, `ap`, `ar`, `poam`.
+
+```
+GET /v1/vendors/vnd_acme/oscal/cdef                      (scope: attestations)
+GET /v1/vendors/vnd_acme/oscal/ssp?framework=nist_800_53
+GET /v1/vendors/vnd_acme/oscal/poam?format=yaml
+GET /v1/vendors/vnd_acme/oscal/bundle                    every model + digests
+```
+
+Start with the capability descriptor, which is public and needs no key:
+
+```
+GET /v1/oscal/capabilities
+```
+
+It names every model, format, alias, framework, and endpoint this deployment supports, so a
+consumer negotiates rather than guesses.
+
+## Three formats
+
+OSCAL defines JSON, YAML, and XML as interchangeable. All three are served from the same
+endpoint via `?format=`:
+
+```
+GET /v1/vendors/vnd_acme/oscal/cdef?format=json   (default)
+GET /v1/vendors/vnd_acme/oscal/cdef?format=yaml
+GET /v1/vendors/vnd_acme/oscal/cdef?format=xml
+```
+
+The XML rendering follows OSCAL's XML binding rather than a naive JSON-to-XML dump: `uuid`,
+`control-id`, and their kin are attributes, arrays become repeated sibling elements, and the
+root carries the `http://csrc.nist.gov/ns/oscal/1.0` namespace.
+
+## Signatures cover the bytes you actually hold
+
+Every OSCAL response carries an Ed25519 signature over the exact bytes returned, in the
+format you asked for — pull XML and you verify the XML, not a JSON re-rendering of it.
+
+```
+X-TrustMCP-Signature    Ed25519 over the response body
+X-TrustMCP-Key-Id       which network key signed it
+X-TrustMCP-OSCAL-Version  the OSCAL release these documents target
+X-TrustMCP-OSCAL-Digest   content digest (see below)
+```
+
+See [Verifying signatures](/customers/verifying-signatures) for the verification code.
+
+## Exports are deterministic
+
+Re-exporting unchanged evidence produces a byte-identical document. Every UUID is derived
+(UUIDv5) from a fixed namespace plus the object's logical path, so the same component,
+requirement, or back-matter resource carries the same UUID across pulls, processes, and
+replicas.
+
+That is what makes diffing viable. The `X-TrustMCP-OSCAL-Digest` header — and the `digests`
+map in `/oscal/bundle` — is a SHA-256 over the document's canonical form with the export
+timestamp excluded. Store it; on the next pull, re-parse only the documents whose digest
+moved.
+
+## Evidence is carried by reference
+
+OSCAL's `back-matter` is where the actual documents live, as resources with a URI and a
+SHA-256 hash:
+
+```json
+{
+  "uuid": "…",
+  "title": "SOC 2 Type II",
+  "description": "Annual SOC 2 report",
+  "props": [
+    { "name": "type", "value": "assessment-report" },
+    { "name": "trustmcp-artifact-id", "ns": "https://trustmcp.org/ns/oscal", "value": "art_soc2" },
+    { "name": "trustmcp-freshness", "ns": "https://trustmcp.org/ns/oscal", "value": "valid" }
+  ],
+  "rlinks": [{
+    "href": "https://network.trustmcp.app/v1/vendors/vnd_acme/artifacts/art_soc2",
+    "media-type": "application/pdf",
+    "hashes": [{ "algorithm": "SHA-256", "value": "…" }]
+  }]
+}
+```
+
+Private artifacts are still listed — that is the point of a trust center: you see what
+exists before you are entitled to read it. The `trustmcp-access` prop tells you whether
+fetching will need a scoped key. Verify the bytes against the recorded hash before trusting
+them.
+
+## What findings do and do not say
+
+TrustMCP standardizes access to evidence, not the verdict. `assessment-results` reports
+observable facts:
+
+- a mapped control with no published claim (a coverage gap, not a failure),
+- evidence past its stated validity,
+- a control the vendor itself reports as not operating,
+- an unverified agent-ready mark.
+
+Whether any of those is disqualifying is your policy decision, made in your tooling. The
+same facts become POA&M items, with deadlines taken from the vendor's own published expiry
+dates — never from a schedule TrustMCP invented.
+
+## Import: the other direction
+
+Already hold an OSCAL component-definition or SSP for your own service? Hand it to TrustMCP
+and it populates the trust center, rather than retyping claims into a form.
+
+```
+POST /v1/vendors/{vid}/oscal/import        (owner token)
+{ "document": { …OSCAL… }, "apply": false, "mode": "merge" }
+```
+
+It is a **dry run by default**: without `"apply": true` you get back exactly what would
+change, and nothing is written. `"mode": "replace"` makes claims and controls match the
+document exactly instead of merging.
+
+Documents TrustMCP produced round-trip exactly — claim keys and values travel as namespaced
+props, so re-importing recovers what the vendor published and nothing more. Documents from
+other tools have no such props, so claims are inferred from implemented control coverage;
+those are labeled `"source": "inferred"` in the plan and the notes say so, precisely so you
+review them before applying.
+
+Evidence references are recorded, never fetched. TrustMCP will not download a URL because an
+uploaded document told it to.
+
+## Validate anything
+
+```
+POST /v1/oscal/validate     (public)
+{ …OSCAL document… }
+```
+
+Checks the invariants that actually break interoperability: exactly one recognized root
+model, complete metadata, syntactically valid and unique UUIDs, and no `#fragment` link
+pointing at a UUID the document does not define. That last one is the useful one — a
+dangling evidence reference silently severs the link between a claim and the document
+backing it.
+
+## Continuous
+
+Point-in-time answers "what is true now". [Continuous OSCAL](/customers/oscal-continuous)
+answers "tell me when that changes" — a cursor feed, an SSE stream, and webhook
+subscriptions over the same documents.
+
+## Through MCP
+
+Every model is an MCP tool, so an agent can run all of this without touching HTTP:
+
+```
+list_oscal_models                 what this network supports
+get_oscal_model                   any model, any format
+get_oscal_component_definition    …or one tool per model
+get_oscal_ssp
+get_oscal_assessment_plan
+get_oscal_assessment_results
+get_oscal_poam
+get_oscal_bundle                  everything at once, with digests
+get_oscal_catalog / get_oscal_profile
+validate_oscal
+get_oscal_changes                 the continuous feed
+poll_oscal_for_changes            check and re-pull only what moved
+subscribe_oscal_changes
+```
+
+## Coverage boundary, stated plainly
+
+The `profile` model exists so the boundary is explicit rather than inferred from gaps: it
+names exactly which framework controls TrustMCP evidence can address. Where NIST publishes
+an official OSCAL catalog (SP 800-53) the `source` resolves to it. Where a standard has no
+machine-readable catalog (SOC 2, ISO 27001) the source points at the authoritative human
+document and the `trustmcp-source-resolvable` prop is `false`, so you can tell resolvable
+references from informative ones.

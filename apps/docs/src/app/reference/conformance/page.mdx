@@ -1,0 +1,30 @@
+# Conformance & the TrustMCP-compliant badge
+
+Any network (or your own implementation) can self-certify against the TrustMCP v0.1 contract
+with the conformance suite in [`conformance/`](https://github.com/trustmcp/trustmcp/tree/main/conformance).
+
+```bash
+pip install httpx jsonschema cryptography
+NETWORK=https://network.trustmcp.app VENDOR=vnd_acme KEY=tmcp_live_... \
+  python conformance/run.py
+```
+
+It checks:
+
+- the network public-key endpoint,
+- the mark endpoint,
+- **schema-valid and Ed25519 signature-verified** manifest and attestations,
+- freshness,
+- and that a downloaded artifact's bytes match the manifest `sha256`.
+
+Exit code is `0` only when every check passes. The same checks run in the reference
+network's own test-suite against the in-process app, so each release is verified
+conformant.
+
+## Badge
+
+```md
+![TrustMCP compliant](https://img.shields.io/badge/TrustMCP-v0.1%20compliant-1837ec)
+```
+
+Run `run.py` in CI on a schedule and publish a Shields endpoint JSON for a live badge.

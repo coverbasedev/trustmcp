@@ -1,0 +1,27 @@
+{
+  "providerId": "trustmcp.app",
+  "providerName": "TrustMCP",
+  "serviceId": "trust-center",
+  "serviceName": "TrustMCP Trust Center",
+  "version": 1,
+  "logoUrl": "https://trustmcp.app/icon.png",
+  "description": "Point a subdomain at your TrustMCP trust center and prove control of it.",
+  "syncPubKeyDomain": "_dconf.trustmcp.app",
+  "syncBlock": false,
+  "warnPhishing": true,
+  "shared": false,
+  "records": [
+    {
+      "type": "CNAME",
+      "host": "@",
+      "pointsTo": "%cname%",
+      "ttl": 600
+    },
+    {
+      "type": "TXT",
+      "host": "_trustmcp",
+      "data": "trustmcp-verify=%token%",
+      "ttl": 600
+    }
+  ]
+}

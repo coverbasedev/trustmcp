@@ -1,0 +1,41 @@
+# FAQ
+
+### Is TrustMCP free?
+
+Yes - publishing and consuming are free. The standard is Apache-2.0.
+
+### Does the network rate or score vendors?
+
+No. The network is a thin trust anchor: it verifies domain ownership, mints
+and validates keys, logs reads, and tracks freshness. The **verdict is always computed
+by the customer**, locally, and never sent back.
+
+### What stops a vendor from publishing fake evidence?
+
+TrustMCP verifies *identity and custody* (you control the domain you publish under), not the
+truth of every claim. Customers verify content themselves by reading the artifacts -
+which is exactly the model TrustMCP enables. See [verifying your domain](/vendors/publishing#verify-your-domain).
+
+### How is this different from older assurance networks?
+
+Pooled-assessment networks shipped stale, one-size verdicts. TrustMCP shares the raw, current evidence and lets
+each customer reach its own conclusion.
+
+### How do customers get access to private documents?
+
+They request access; the vendor approves (or an [auto-release policy](/vendors/auto-release)
+grants automatically) and a scoped, expiring, revocable key is issued.
+
+### Can I host my own network?
+
+Yes. The reference network is open source and self-hostable (S3 or local storage,
+Postgres or SQLite). Profiles are portable JSON behind a documented API.
+
+### How do I keep evidence current?
+
+Set `valid_until` on artifacts. The network emails you before expiry; refresh once and
+every customer sees the update at the same time.
+
+### Where's the code?
+
+[github.com/trustmcp/trustmcp](https://github.com/trustmcp/trustmcp).

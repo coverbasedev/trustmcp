@@ -1,0 +1,36 @@
+# Publish your trust center
+
+Go from nothing to a published trust center in an afternoon, with you in full
+control of access.
+
+1. **[Create a trust center](/getting-started)** - sign in and enter your legal name,
+   product, and primary domain. This provisions a vendor and a private owner token.
+2. **[Brand it](/vendors/branding)** - your logo, colors, headline. TrustMCP stays invisible.
+3. **[Upload evidence](/vendors/artifacts)** - SOC 2, pentest, ISO, COI, DPA, SBOM…
+4. **[Declare attestations](/vendors/attestations)** - machine-readable claims.
+5. **Verify a domain** - confirm you control where you publish ([see below](#verify-your-domain)).
+6. **Add your discovery record** - host `/.well-known/trustmcp.json` on your domain
+   (copy it from the app, or proxy `/api/discovery/{vendor_id}`).
+7. **Publish** - your public trust center goes live.
+8. **[Handle access](/vendors/access-and-approvals)** - approve, scope, revoke; or set
+   **[auto-release policies](/vendors/auto-release)**.
+
+You answered the questionnaire once - by publishing.
+
+## Verify your domain
+
+In **Domains**, add a domain and complete **one** challenge to confirm you control it:
+
+- **DNS TXT** - add `_trustmcp-challenge.<domain>` with the shown value, or
+- **`.well-known`** - host the value at `https://<domain>/.well-known/trustmcp-challenge.txt`.
+
+Click **Verify**. This proves you own the domain you publish under - the content of your
+evidence stays self-asserted, and customers verify it themselves. Verification is free,
+domain-bound, and reflected at `GET /v1/mark/{vendor_id}`, which consumers can check
+without a key.
+
+## Auth & accounts
+
+Sign in with **GitHub**, **Google**, or an **email sign-in link** (which verifies your
+address). See the [auth setup](https://github.com/trustmcp/trustmcp/blob/main/docs/auth-setup.md)
+for configuring providers and SMTP.

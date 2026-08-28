@@ -1,0 +1,41 @@
+# Node
+node_modules/
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+.turbo/
+
+# Python
+__pycache__/
+*.py[cod]
+uv.lock
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Data / artifacts (local dev)
+.data/
+minio-data/
+tmp/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+packages/*/pnpm-lock.yaml
+
+# Prisma local dbs
+*.db
+apps/web/prisma/dev.db*

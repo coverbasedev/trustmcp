@@ -1,0 +1,47 @@
+# API reference
+
+Base URL: `https://network.trustmcp.app` (or your operator / `http://localhost:8000`).
+Interactive OpenAPI docs are served at `/docs`.
+
+## Auth tiers
+
+| Header | Who | For |
+|--------|-----|-----|
+| `X-TrustMCP-Service-Token` | the web backend | creating vendors on behalf of users |
+| `X-TrustMCP-Owner-Token` | a vendor | managing its own trust center |
+| `Authorization: Bearer tmcp_live_…` | a customer | reading a profile (scoped) |
+
+## Consumer (read) endpoints
+
+| Method | Path | Scope |
+|--------|------|-------|
+| GET | `/v1/vendors/{vid}/manifest` | `manifest` |
+| GET | `/v1/vendors/{vid}/attestations` | `attestations` |
+| GET | `/v1/vendors/{vid}/subprocessors` | `attestations` |
+| GET | `/v1/vendors/{vid}/freshness` | `manifest` |
+| GET | `/v1/vendors/{vid}/artifacts/{aid}` | `artifacts` |
+
+## Public (no auth)
+
+| Method | Path |
+|--------|------|
+| GET | `/v1/mark/{vid}` |
+| GET | `/v1/directory` |
+| GET | `/v1/vendors/{vid}/public` |
+| GET | `/v1/vendors/{vid}/artifacts/{aid}/public` |
+| POST | `/v1/keys/request` |
+| POST | `/v1/keys/request-with-contract` |
+
+`POST /v1/keys/request` returns `{"status":"granted", key, ...}` immediately when an
+[auto-release policy](/vendors/auto-release) matches; otherwise `{"status":"pending"}`.
+
+## Owner (management)
+
+Vendor profile, artifacts (incl. content upload), attestations, subprocessors, domains +
+verify, key requests (approve with `scope` / `ttl_days` / `artifact_ids`, deny), revoke,
+audit (`/audit`, `/audit.csv`). `PUT …/profile` also accepts `notify_email`,
+`notify_on_request`, `listed`, `auto_approve_domains`, `auto_approve_crm`,
+`auto_approve_on_contract`.
+
+Full table:
+[docs/api-reference.md](https://github.com/trustmcp/trustmcp/blob/main/docs/api-reference.md).

@@ -1,0 +1,36 @@
+{
+  "name": "@trustmcp/spec",
+  "version": "0.1.0",
+  "description": "TrustMCP shared schemas and TypeScript types (canonical zod + JSON Schema).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "publishConfig": { "access": "public" },
+  "repository": { "type": "git", "url": "https://github.com/trustmcp/trustmcp.git", "directory": "packages/trustmcp-spec" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "schemas"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "echo \"(trustmcp-spec) lint: noop\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "spec:validate": "node scripts/validate-examples.mjs"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

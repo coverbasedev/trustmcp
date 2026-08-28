@@ -1,0 +1,48 @@
+name: Release (publish packages)
+
+# Publishes the TypeScript packages to npm and the Python client to PyPI on a tag.
+# Each publish is gated on its token secret and skips cleanly when absent.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @trustmcp/spec build && pnpm --filter @trustmcp/sdk build
+      - name: Publish @trustmcp/spec and @trustmcp/sdk
+        if: ${{ secrets.NPM_TOKEN != '' }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          pnpm --filter @trustmcp/spec publish --no-git-checks --access public || true
+          pnpm --filter @trustmcp/sdk publish --no-git-checks --access public || true
+      - if: ${{ secrets.NPM_TOKEN == '' }}
+        run: echo "::notice::NPM_TOKEN not set; skipping npm publish."
+
+  pypi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build the MCP client (trustmcp-mcp)
+        working-directory: mcp/python
+        run: uv build
+      - name: Publish to PyPI
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        working-directory: mcp/python
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish
+      - if: ${{ secrets.PYPI_API_TOKEN == '' }}
+        run: echo "::notice::PYPI_API_TOKEN not set; skipping PyPI publish."

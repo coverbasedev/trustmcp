@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trustmcp.org/schemas/0.1/freshness.schema.json",
+  "title": "TrustMCP Freshness",
+  "type": "object",
+  "required": ["vendor_id", "checked_at", "items"],
+  "additionalProperties": false,
+  "properties": {
+    "vendor_id": { "type": "string", "pattern": "^vnd_[a-z0-9_]+$" },
+    "checked_at": { "type": "string", "format": "date-time" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^art_[a-z0-9_]+$" },
+          "status": { "type": "string", "enum": ["valid", "expiring", "expired"] },
+          "valid_until": { "type": ["string", "null"], "format": "date" },
+          "days_left": { "type": ["integer", "null"] }
+        }
+      }
+    }
+  }
+}

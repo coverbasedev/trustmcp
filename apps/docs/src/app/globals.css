@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-white text-slate-900 antialiased;
+}
+
+/* Render the docs at 90% of natural size, matching the rest of the product UI. */
+.ui-90 {
+  zoom: 0.9;
+}

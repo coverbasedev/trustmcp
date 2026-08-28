@@ -1,0 +1,24 @@
+# Auto-release policies
+
+Grant access automatically - no manual step - when a request matches a policy you
+enable in **Settings**. Auto-granted keys are still **scoped, expiring, and revocable**,
+and each auto-grant is recorded in the audit log with its reason.
+
+## Policies
+
+- **Preconfigured customer domains** - an allowlist of requester domains. Fast and
+  works on every channel.
+- **CRM match** - the requester's email domain is an existing customer in **HubSpot** or
+  **Salesforce**. The network checks the CRM directly, so it works for web, API, and MCP
+  requests. Configure a provider token; see
+  [CRM verification](https://github.com/trustmcp/trustmcp/blob/main/docs/crm-verification.md).
+- **Contract upload** - the requester uploads a contract proving an agreement via
+  `POST /v1/keys/request-with-contract`. You can later download the contract for audit.
+
+When a policy matches, `POST /v1/keys/request` returns `{"status":"granted","key":…}`
+immediately, so an API/MCP requester receives a working key in the response.
+
+## Precedence
+
+Any matching policy grants access. If none match, the request stays **pending** for
+manual review (and you're notified if notifications are on).

@@ -1,0 +1,39 @@
+# Architecture
+
+TrustMCP is a small set of cooperating services around an open wire format.
+
+## Components
+
+- **Network API** (`apps/network`, FastAPI + SQLAlchemy/Alembic) - the *thin trust
+  anchor*. Verifies domains, issues/validates the mark, mints/validates scoped keys,
+  signs manifest/attestations (Ed25519), stores artifacts (S3 or local), and records the
+  audit log. Stateless app tier; state in Postgres + object storage.
+- **Web app** (`apps/web`, Next.js + Auth.js + Prisma) - the custom-branded Trust Center
+  builder and public profile pages. Holds users, orgs/roles, and the per-trust-center
+  **owner token**; calls the network with a **service token**.
+- **MCP server** (`mcp/python`) - exposes the read/assess operations as agent tools and
+  verifies response signatures. Holds the *customer's* access keys.
+- **Docs** (`apps/docs`) - this site.
+
+## Trust boundaries
+
+- The **network** authenticates three principals: the web backend (service token), a
+  vendor (owner token), and a customer (bearer access key). Tokens/keys are stored
+  hashed or write-only.
+- **Verdicts never enter the network.** Customers compute them locally.
+- **Tamper-evidence:** manifest/attestations are signed; artifacts carry a `sha256`.
+
+## Request flow (customer read)
+
+```
+agent ──MCP──▶ MCP server ──Bearer key──▶ Network API ──▶ Postgres
+                                   │
+                                   └─signed JSON (verified) + signed S3 URL (hash-checked)
+```
+
+## Deployment (reference)
+
+Render Blueprint (`render.yaml`): three Docker web services (network, web, docs) +
+managed Postgres, with a persistent disk (or S3/R2) for artifacts and automatic TLS on
+the `trustmcp.app` domains. `trustmcp.org` 301-redirects to `trustmcp.app`. See
+**[Self-hosting](/operate/self-hosting)** to run it yourself.

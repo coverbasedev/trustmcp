@@ -1,0 +1,47 @@
+# The five objects
+
+TrustMCP is built from five objects.
+
+| Object | What it is |
+|--------|------------|
+| **Assurance Profile** | Everything a vendor publishes, reached via a discovery record on the vendor's own domain. |
+| **Manifest** | The index of a profile: which artifacts and attestations exist, plus freshness metadata. |
+| **Artifact** | A document: SOC 2, pentest, ISO cert, insurance COI, financials, DPA, architecture, subprocessor list, SBOM, policy. |
+| **Attestation** | A structured, machine-readable claim (`mfa.enforced: true`) linked to the artifact(s) that back it. |
+| **Access Key** | A scoped, revocable token a customer presents to read a profile. |
+
+## Discovery
+
+A vendor hosts one small file on its primary domain:
+
+```
+GET https://acme.com/.well-known/trustmcp.json
+```
+
+```json
+{
+  "schema_version": "0.1",
+  "vendor_id": "vnd_acme",
+  "legal_name": "Acme Corp",
+  "network": "https://network.trustmcp.app",
+  "manifest": "https://network.trustmcp.app/v1/vendors/vnd_acme/manifest",
+  "mark": "agent-ready"
+}
+```
+
+An agent that knows only a domain resolves from here to the network, then requests
+access.
+
+## Attestations
+
+Structured claims save an agent from parsing every PDF:
+
+```json
+{ "key": "mfa.enforced", "value": true, "evidence": ["art_soc2_2026"] }
+```
+
+A claim is `key`, `value` (boolean / string / number / list), and `evidence` (artifact
+ids). Customers map claim keys to their own control framework - and two customers may
+map them differently.
+
+See the **[schemas reference](/reference/schemas)** for the full shapes.

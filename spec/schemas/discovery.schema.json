@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trustmcp.org/schemas/0.1/discovery.schema.json",
+  "title": "TrustMCP Discovery Record",
+  "description": "The .well-known/trustmcp.json file a vendor hosts on its own domain.",
+  "type": "object",
+  "required": ["schema_version", "vendor_id", "legal_name", "network", "manifest"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1" },
+    "vendor_id": { "type": "string", "pattern": "^vnd_[a-z0-9_]+$" },
+    "legal_name": { "type": "string", "minLength": 1 },
+    "network": { "type": "string", "format": "uri" },
+    "manifest": { "type": "string", "format": "uri" },
+    "mark": { "type": "string", "enum": ["agent-ready"] }
+  }
+}

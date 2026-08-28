@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trustmcp.org/schemas/0.1/manifest.schema.json",
+  "title": "TrustMCP Manifest",
+  "description": "The index of an assurance profile.",
+  "type": "object",
+  "required": ["schema_version", "vendor", "published_at", "artifacts"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "type": "string", "const": "0.1" },
+    "vendor": {
+      "type": "object",
+      "required": ["id", "legal_name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^vnd_[a-z0-9_]+$" },
+        "legal_name": { "type": "string", "minLength": 1 },
+        "domains": { "type": "array", "items": { "type": "string" } },
+        "product": { "type": "string" }
+      }
+    },
+    "published_at": { "type": "string", "format": "date-time" },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "attestations_uri": { "type": "string" },
+    "subprocessors_uri": { "type": "string" }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["id", "type", "issued_at", "sha256", "access", "uri"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^art_[a-z0-9_]+$" },
+        "type": {
+          "type": "string",
+          "description": "Open set. Suggested v0 values listed in the spec.",
+          "examples": [
+            "soc2_type2", "soc2_type1", "iso_27001", "pentest", "insurance_coi",
+            "financials", "dpa", "architecture", "subprocessor_list", "sbom", "policy"
+          ]
+        },
+        "title": { "type": "string" },
+        "format": { "type": "string", "description": "e.g. cyclonedx-1.5, pdf" },
+        "issued_at": { "type": "string", "format": "date" },
+        "valid_until": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "null means the artifact does not expire."
+        },
+        "scope": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{8,64}$" },
+        "access": { "type": "string", "enum": ["public", "key_required"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "uri": { "type": "string" }
+      }
+    }
+  }
+}

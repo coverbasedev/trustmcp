@@ -1,0 +1,46 @@
+{
+  "name": "@trustmcp/web",
+  "version": "0.1.0",
+  "private": true,
+  "license": "FSL-1.1-ALv2",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "prisma generate && next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "db:push": "prisma db push",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.102.0",
+    "@auth/prisma-adapter": "^2.7.4",
+    "@browserbasehq/stagehand": "^3.5.0",
+    "@prisma/client": "^6.1.0",
+    "@sentry/nextjs": "^10.0.0",
+    "@trustmcp/sdk": "workspace:*",
+    "next": "^15.1.4",
+    "next-auth": "5.0.0-beta.25",
+    "nodemailer": "^7.0.7",
+    "posthog-js": "^1.200.0",
+    "prisma": "^6.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
