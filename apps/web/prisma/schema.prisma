@@ -151,3 +151,18 @@ model TrustCenterMigration {
 
   @@index([vendorId])
 }
+
+// Contact details left by visitors on the /resources landing page (the QR-code
+// destination used in talks and presentations). Purely a lead-capture record —
+// the resources themselves are never gated on a submission.
+model Lead {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  company   String
+  // Where the lead came from, so future landing pages can share this table.
+  source    String   @default("resources")
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
