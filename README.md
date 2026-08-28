@@ -1,6 +1,5 @@
 # TrustMCP
 
-![CI](https://github.com/trustmcp/trustmcp/actions/workflows/ci.yml/badge.svg)
 ![Spec & SDK: Apache-2.0](https://img.shields.io/badge/spec%20%26%20SDK-Apache--2.0-blue)
 ![Apps: FSL-1.1-ALv2](https://img.shields.io/badge/apps-FSL--1.1--ALv2-4f46e5)
 ![TrustMCP v0.1](https://img.shields.io/badge/TrustMCP-v0.1-4f46e5)
