@@ -5,7 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "https://github.com/trustmcp/trustmcp.git", "directory": "packages/trustmcp-spec" },
+  "repository": { "type": "git", "url": "https://github.com/coverbasedev/trustmcp.git", "directory": "packages/trustmcp-spec" },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

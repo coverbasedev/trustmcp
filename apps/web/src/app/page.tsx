@@ -5,7 +5,7 @@ import HomeReveal from "@/components/HomeReveal";
 import { TrustMark } from "@/components/logo";
 
 const DOCS_URL = "https://docs.trustmcp.app";
-const GITHUB_URL = "https://github.com/trustmcp/trustmcp";
+const GITHUB_URL = "https://github.com/coverbasedev/trustmcp";
 
 export default async function Home() {
   const session = await auth();

@@ -120,4 +120,4 @@ All notable changes to TrustMCP are documented here. The project follows
 ### Removed
 - Dead `apps/web/src/lib/crm.ts` (CRM checks run server-side in the network).
 
-[Unreleased]: https://github.com/trustmcp/trustmcp
+[Unreleased]: https://github.com/coverbasedev/trustmcp

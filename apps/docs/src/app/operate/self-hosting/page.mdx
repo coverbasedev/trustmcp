@@ -6,7 +6,7 @@ TrustMCP is fully self-hostable - it's an open standard, and profiles are portab
 
 The fastest path is the committed **`render.yaml`** Blueprint: connect the repo in
 Render, click **Apply**, set the signing key, and attach your domains. See the full
-[deploy guide](https://github.com/trustmcp/trustmcp/blob/main/DEPLOY.md).
+[deploy guide](https://github.com/coverbasedev/trustmcp/blob/main/DEPLOY.md).
 
 ## Local / single box
 
@@ -34,7 +34,7 @@ Brings up Postgres, MinIO (S3-compatible), the network API, and the web app.
 **Web**
 
 - `DATABASE_URL` (Postgres), `AUTH_SECRET`, `AUTH_URL`, and at least one auth provider
-  (GitHub/Google/SSO/email). See [auth setup](https://github.com/trustmcp/trustmcp/blob/main/docs/auth-setup.md).
+  (GitHub/Google/SSO/email). See [auth setup](https://github.com/coverbasedev/trustmcp/blob/main/docs/auth-setup.md).
 - `TRUSTMCP_NETWORK_URL` + `TRUSTMCP_SERVICE_TOKEN` (matching the network).
 - Runs `prisma migrate deploy` at boot.
 
