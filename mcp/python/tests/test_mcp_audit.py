@@ -16,9 +16,15 @@ def test_classify_action_read():
 
 
 def test_classify_action_destructive_outward_execute():
-    delete = mcp_audit.classify_tool({"name": "delete_record", "description": "Permanently delete."})
-    send = mcp_audit.classify_tool({"name": "send_email", "description": "Send an email to a user."})
-    run = mcp_audit.classify_tool({"name": "run_query", "description": "Execute an arbitrary SQL query."})
+    delete = mcp_audit.classify_tool(
+        {"name": "delete_record", "description": "Permanently delete."}
+    )
+    send = mcp_audit.classify_tool(
+        {"name": "send_email", "description": "Send an email to a user."}
+    )
+    run = mcp_audit.classify_tool(
+        {"name": "run_query", "description": "Execute an arbitrary SQL query."}
+    )
     assert delete["action"] == "destructive"
     assert send["action"] == "outward"
     assert run["action"] == "execute"
