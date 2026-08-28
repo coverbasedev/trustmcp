@@ -15,12 +15,19 @@ Run:
 
 from __future__ import annotations
 
+import os
+
+import httpx
 from mcp.server.fastmcp import FastMCP
 
+import mcp_audit
 from trustmcp_client import TrustMCPClient
 
 mcp = FastMCP("assurance-network")
 _client = TrustMCPClient()
+
+# Base URL of the TrustMCP web app, for reading published MCP audit scorecards.
+_WEB_BASE = os.environ.get("TRUSTMCP_WEB", "https://trustmcp.app").rstrip("/")
 
 
 @mcp.tool()
@@ -278,6 +285,67 @@ def verify_mark(vendor_id: str) -> dict:
 def get_network_key() -> dict:
     """Return the network's Ed25519 public key used to sign manifest/attestations."""
     return _client.get_network_key()
+
+
+# --- MCP Audit: inspect, probe, and interact with audit results --------------
+
+
+@mcp.tool()
+def list_risk_dimensions() -> dict:
+    """List the TrustMCP MCP-audit risk taxonomy: the risk dimensions every audit
+    scores a server against (data, privacy, autonomy, financial, compliance,
+    reputational, liability, and more). Use this to understand the nomenclature
+    before reading or requesting an audit."""
+    return {"dimensions": mcp_audit.RISK_DIMENSIONS}
+
+
+@mcp.tool()
+def inspect_mcp_server(url: str, bearer: str | None = None, intended_use: str = "") -> dict:
+    """Directly inspect a target MCP server, read-only, and return its classified
+    tool inventory, aggregated risk signals, and dynamically generated probes.
+
+    This is the deterministic core of a TrustMCP audit: it performs the MCP
+    handshake and enumerates every tool (classifying each as read/write/destructive/
+    outward/execute, the data classes it touches, and whether its description looks
+    like tool poisoning), then generates probes tailored to THIS server. It never
+    calls a tool — write/destructive/outward probes are recommendations only. Pass
+    `intended_use` to tailor probes to how you plan to integrate the server. For a
+    fully scored scorecard, run a scan in the TrustMCP MCP Audit workspace."""
+    return mcp_audit.inspect_and_probe(url, bearer, intended_use)
+
+
+@mcp.tool()
+def generate_audit_probes(url: str, bearer: str | None = None, intended_use: str = "") -> dict:
+    """Generate dynamic, server-specific audit probes for an MCP server without
+    scoring it. Enumerates the tools read-only and returns probe hypotheses and
+    prompts (each marked read_only or review_only) you can run to discover what the
+    server allows. Every server differs, so these are built from its actual tool
+    surface, not a static checklist."""
+    result = mcp_audit.inspect_server(url, bearer)
+    if not result.get("ok"):
+        return result
+    return {
+        "ok": True,
+        "target": url,
+        "dynamic_probes": mcp_audit.generate_probes(result["tools"], intended_use),
+    }
+
+
+@mcp.tool()
+def get_mcp_audit(vendor_id: str, slug: str) -> dict:
+    """Read a published TrustMCP MCP-audit scorecard for a vendor's own MCP server.
+
+    Returns the standardized scorecard (overall grade, per-dimension risk, findings,
+    integration analysis) plus the evidence content hash. `slug` is the audit's
+    publish slug from its public trust-center page (/trust/<vendor_id>/audit/<slug>)."""
+    try:
+        r = httpx.get(f"{_WEB_BASE}/api/audit/{vendor_id}/{slug}", timeout=30)
+        if r.status_code == 404:
+            return {"error": "not_found", "detail": "No published audit at that vendor/slug."}
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:  # pragma: no cover - network dependent
+        return {"error": "fetch_failed", "detail": str(e)[:200]}
 
 
 def main() -> None:

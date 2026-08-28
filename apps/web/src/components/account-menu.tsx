@@ -86,6 +86,12 @@ export default function AccountMenu({
             Team &amp; members
           </Link>
           <Link
+            href="/audit/scans"
+            className="block rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+          >
+            MCP Audits
+          </Link>
+          <Link
             href="/directory"
             className="block rounded px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
           >
