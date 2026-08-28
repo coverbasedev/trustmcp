@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="ml-1 rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500">docs</span>
             </Link>
             <nav className="flex items-center gap-4 text-sm text-slate-600">
-              <a href="https://github.com/trustmcp/trustmcp" className="hover:text-slate-900">GitHub</a>
+              <a href="https://github.com/coverbasedev/trustmcp" className="hover:text-slate-900">GitHub</a>
               <a href="/reference/api" className="hover:text-slate-900">API</a>
             </nav>
           </div>
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             {children}
             <footer className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-400">
               TrustMCP · Apache-2.0 standard ·{" "}
-              <a className="text-brand-600 hover:underline" href="https://github.com/trustmcp/trustmcp">
+              <a className="text-brand-600 hover:underline" href="https://github.com/coverbasedev/trustmcp">
                 Edit on GitHub
               </a>
             </footer>

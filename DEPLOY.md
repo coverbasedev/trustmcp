@@ -40,7 +40,7 @@ The Blueprint provisions four services + one database:
 | You need | Why | Notes |
 |----------|-----|-------|
 | **Render account** | Hosts everything | Free to create; you pay per service/plan. |
-| **GitHub repo** | Source + auto-deploy | You already have `trustmcp/trustmcp`. |
+| **GitHub repo** | Source + auto-deploy | You already have `coverbasedev/trustmcp`. |
 | **The two domains** | Public URLs + the `agent-ready` mark | `trustmcp.app` and `trustmcp.org` (you own these). |
 | *(optional)* Google + GitHub OAuth apps | Sign-in | Or use the email sign-in link / enterprise SSO. |
 | *(optional)* An email sender | Email sign-in link + notifications | Resend, Postmark, Mailgun, SES, etc. |
@@ -56,7 +56,7 @@ Docker — see the repo `README.md`.
 ## 2. Deploy the Blueprint
 
 1. Push this repo to GitHub (the `render.yaml` must be on the branch you deploy).
-2. In Render: **New +  →  Blueprint**, pick `trustmcp/trustmcp`, choose the branch,
+2. In Render: **New +  →  Blueprint**, pick `coverbasedev/trustmcp`, choose the branch,
    and click **Apply**.
 3. Render reads [`render.yaml`](render.yaml) and creates the database and all four
    services. The first build takes a few minutes (Docker image builds + `pnpm install`).
