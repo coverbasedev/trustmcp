@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyTool, isAutoProbeSafe } from "../src/lib/mcp-audit/classify";
+import { aggregateDataClasses, classifyTool, isAutoProbeSafe } from "../src/lib/mcp-audit/classify";
 import {
   RISK_DIMENSIONS,
   scoreToGrade,
@@ -39,6 +39,20 @@ describe("tool classification", () => {
   it("detects financial data classes", () => {
     const t = classifyTool({ name: "list_paystubs", description: "List payroll paystubs and deductions." });
     expect(t.dataClasses).toContain("financial");
+  });
+
+  it("aggregates data classes across the tool surface, ranked by exposure", () => {
+    const tools = [
+      classifyTool({ name: "get_customer", description: "Get a customer record." }),
+      classifyTool({ name: "list_paystubs", description: "List payroll paystubs." }),
+      classifyTool({ name: "get_user", description: "Get a user profile." }),
+    ];
+    const agg = aggregateDataClasses(tools);
+    const pii = agg.find((a) => a.dataClass === "pii");
+    expect(pii).toBeDefined();
+    expect(pii!.tools.length).toBeGreaterThanOrEqual(2);
+    // Ranked most-exposed first.
+    expect(agg[0].tools.length).toBeGreaterThanOrEqual(agg[agg.length - 1].tools.length);
   });
 });
 

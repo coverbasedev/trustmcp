@@ -80,3 +80,31 @@ export function classifyTool(tool: RawTool): ToolRecord {
 export function isAutoProbeSafe(tool: ToolRecord): boolean {
   return tool.action === "read";
 }
+
+/** Aggregate the data classes observed across a tool surface, with the tools that
+ *  expose each — the "types of data fields you share" view for the report. */
+export function aggregateDataClasses(tools: ToolRecord[]): { dataClass: string; tools: string[] }[] {
+  const map = new Map<string, string[]>();
+  for (const t of tools) {
+    for (const dc of t.dataClasses) {
+      if (!map.has(dc)) map.set(dc, []);
+      map.get(dc)!.push(t.name);
+    }
+  }
+  return [...map.entries()]
+    .map(([dataClass, ts]) => ({ dataClass, tools: ts }))
+    .sort((a, b) => b.tools.length - a.tools.length);
+}
+
+/** Human labels for the data-class ids the classifier emits. */
+export const DATA_CLASS_LABEL: Record<string, string> = {
+  pii: "Personal data (PII)",
+  financial: "Financial",
+  credentials: "Credentials / secrets",
+  health: "Health (PHI)",
+  messages: "Messages / email",
+  files: "Files / documents",
+  calendar: "Calendar",
+  code: "Source code",
+  location: "Location",
+};

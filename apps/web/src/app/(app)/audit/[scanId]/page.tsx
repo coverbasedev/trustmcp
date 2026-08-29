@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { DescriptionEditor } from "@/components/mcp-audit/DescriptionEditor";
 import { Interrogate } from "@/components/mcp-audit/Interrogate";
 import { ScanPoller } from "@/components/mcp-audit/ScanPoller";
 import { GradeBadge, OutcomeChip, RiskMeter, SeverityChip } from "@/components/mcp-audit/ui";
+import { aggregateDataClasses, DATA_CLASS_LABEL } from "@/lib/mcp-audit/classify";
 import { getDimension } from "@/lib/mcp-audit/taxonomy";
 import { getScanForUser } from "@/lib/mcp-audit/store";
 import { listTrustCenters } from "@/lib/trustcenter";
@@ -40,6 +42,7 @@ export default async function ScanReportPage({
     | { bundle?: { contentHash?: string }; attestation?: { submitted?: boolean; proofId?: string; verifyUrl?: string; note?: string; contentHash?: string } }
     | null;
   const active = ACTIVE.has(scan.status);
+  const dataClasses = aggregateDataClasses(tools);
   const trustCenters = await listTrustCenters(session.user.id);
 
   return (
@@ -111,7 +114,34 @@ export default async function ScanReportPage({
                 <p className="text-sm text-slate-700">{scorecard.typicalUse}</p>
               </div>
             )}
+            <div>
+              <div className="text-xs font-medium uppercase text-slate-400">Description</div>
+              <DescriptionEditor scanId={scanId} initial={scan.description} />
+            </div>
           </section>
+
+          {/* Data exchanged — the types of data fields the server can move */}
+          {dataClasses.length > 0 && (
+            <section className="card space-y-2">
+              <h3 className="font-semibold">Data fields exchanged</h3>
+              <p className="text-sm text-slate-600">
+                Data classes the tool surface can read or write, and the tools that expose each. This is
+                the data your integration is likely to share with the server.
+              </p>
+              <div className="space-y-1">
+                {dataClasses.map((d) => (
+                  <div key={d.dataClass} className="flex items-center justify-between gap-3 text-sm">
+                    <span className="badge bg-slate-100 text-slate-700">
+                      {DATA_CLASS_LABEL[d.dataClass] ?? d.dataClass}
+                    </span>
+                    <span className="truncate text-xs text-slate-500">
+                      {d.tools.length} tool{d.tools.length === 1 ? "" : "s"}: {d.tools.join(", ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Security & threat model */}
           {(scorecard.securityModel || scorecard.threatModel) && (

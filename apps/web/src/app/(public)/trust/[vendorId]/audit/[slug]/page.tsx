@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { GradeBadge, RiskMeter, SeverityChip } from "@/components/mcp-audit/ui";
 import { db } from "@/lib/db";
+import { aggregateDataClasses, DATA_CLASS_LABEL } from "@/lib/mcp-audit/classify";
 import { getDimension } from "@/lib/mcp-audit/taxonomy";
-import type { Scorecard } from "@/lib/mcp-audit/types";
+import type { Scorecard, ToolRecord } from "@/lib/mcp-audit/types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,8 @@ export default async function PublicAuditPage({
   const scan = await loadPublished(vendorId, slug);
   if (!scan || !scan.scorecard) notFound();
   const scorecard = scan.scorecard as unknown as Scorecard;
+  const tools = (scan.toolInventory as unknown as ToolRecord[]) ?? [];
+  const dataClasses = aggregateDataClasses(tools);
   const evidence = scan.evidence as { bundle?: { contentHash?: string } } | null;
 
   return (
@@ -69,6 +72,22 @@ export default async function PublicAuditPage({
               {scorecard.typicalUse}
             </p>
           )}
+        </section>
+      )}
+
+      {dataClasses.length > 0 && (
+        <section className="card space-y-2">
+          <h2 className="text-lg font-semibold">Data fields exchanged</h2>
+          <p className="text-sm text-slate-600">
+            Data classes this server&apos;s tools can read or write.
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {dataClasses.map((d) => (
+              <span key={d.dataClass} className="badge bg-slate-100 text-slate-700">
+                {DATA_CLASS_LABEL[d.dataClass] ?? d.dataClass}
+              </span>
+            ))}
+          </div>
         </section>
       )}
 
