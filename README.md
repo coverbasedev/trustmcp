@@ -20,6 +20,19 @@ the verdict**.
 The standard is **Apache-2.0** and is not a product of any single company; the reference
 apps are **Functional Source License** (see [Licensing](#licensing)).
 
+## MCP Audit — scan a server before you trust it
+
+An API is self-describing; an MCP server is not, and agents lean on exactly that
+open-endedness. **MCP Audit** ([`/audit`](docs/mcp-audit.md)) reads a server's tools,
+researches the vendor, generates **dynamic, server-specific probes** (read-only probes
+run live; anything that could change state is a recommendation only), evaluates static
+controls plus your own clauses, and produces a standardized **risk scorecard** across
+twelve dimensions — data, privacy, autonomy, financial, compliance, reputational,
+liability, and more. Scans run on **your** LLM credentials, carry a content-hashed
+evidence bundle (optionally attested with Corsair), can be **interrogated** through the
+MCP server, and vendors can **publish** their own server's scorecard to their trust
+center. See [`docs/mcp-audit.md`](docs/mcp-audit.md).
+
 ## The five objects
 
 **Assurance Profile** (everything a vendor publishes) · **Manifest** (the index) ·
@@ -50,7 +63,7 @@ themselves. See [`governance/`](governance).
 | [`mcp/python`](mcp/python) | **Python MCP server** + end-to-end assessment demo |
 | [`render.yaml`](render.yaml) | **Render Blueprint**: one-click deploy of network + web + docs + Postgres |
 | [`governance/`](governance) | Charter, mark policy, membership, neutrality (drafts) |
-| [`docs/`](docs) | API reference, vendor + GRC guides, auth setup, public/private docs, CRM verification, founding one-pager, ecosystem |
+| [`docs/`](docs) | API reference, MCP Audit, vendor + GRC guides, auth setup, public/private docs, CRM verification, founding one-pager, ecosystem |
 
 ## Deploying
 

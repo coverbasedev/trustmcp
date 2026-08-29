@@ -152,6 +152,101 @@ model TrustCenterMigration {
   @@index([vendorId])
 }
 
+// --- MCP Audit subsystem ---
+//
+// An org brings its own LLM credentials, then scans MCP servers for integration
+// risk. The scan record holds the whole audit (tool inventory, research, probes,
+// controls, scorecard, evidence) as versioned JSON, plus an optional publish link
+// to one of the org's trust centers so a vendor can self-scan and publish the
+// scorecard on its public page.
+
+// A per-org LLM provider credential. The API key is encrypted at rest (crypto.ts);
+// it is used only server-side by the audit engine and never returned to a client.
+model LlmCredential {
+  id             String   @id @default(cuid())
+  orgId          String
+  provider       String // "anthropic" | "openai"
+  label          String?
+  // Default model id for this credential (e.g. "claude-opus-4-6", "gpt-5.1").
+  model          String
+  apiKeyEnc      String
+  baseUrl        String?
+  createdById    String
+  createdAt      DateTime @default(now())
+  lastVerifiedAt DateTime?
+  status         String   @default("unverified") // unverified | ok | error
+
+  @@index([orgId])
+}
+
+// An org-defined custom control ("clause") merged into every scan alongside the
+// static controls. Lets a team encode reusable policy checks they want validated
+// across every MCP server in their environment.
+model AuditClause {
+  id          String   @id @default(cuid())
+  orgId       String
+  dimension   String // a RISK_DIMENSIONS id
+  title       String
+  intent      String
+  weight      Float?   @default(0.6)
+  enabled     Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([orgId])
+}
+
+// One audit of one MCP server. Runs detached and persists progress here so the
+// dashboard can poll. Secrets (target auth) are stored encrypted in authSecretEnc;
+// only the display shape lives in authKind/authDetail.
+model McpAuditScan {
+  id                String   @id @default(cuid())
+  orgId             String
+  createdById       String
+  name              String
+  // Operator-editable description (used when publishing a self-scan).
+  description       String?
+  targetUrl         String
+  transport         String   @default("http") // http | sse | stdio
+  authKind          String   @default("none")
+  authDetail        String?
+  authSecretEnc     String?
+  // Context the operator gives about what they'll use the server for.
+  intendedUse       String?
+  // Integration points the operator described (array of strings).
+  integrationPoints Json?
+  // Which LLM ran this scan.
+  provider          String
+  model             String
+  // pending | inspecting | researching | probing | scoring | completed | failed
+  status            String   @default("pending")
+  statusDetail      String?
+  overallScore      Int?
+  grade             String?
+  // Result blobs (see lib/mcp-audit/types.ts).
+  toolInventory     Json?
+  research          Json?
+  probes            Json?
+  controls          Json?
+  scorecard         Json?
+  evidence          Json?
+  // Interrogation transcript from the MCP interaction layer.
+  interactions      Json?
+  // Structured step log: [{ at, phase, detail }].
+  log               Json?
+  // Publishing: link a completed scan to a trust center's public page.
+  published         Boolean  @default(false)
+  publishedVendorId String?
+  publishSlug       String?  @unique
+  publishedVersion  String?
+  publishedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([publishedVendorId])
+}
+
 // Contact details left by visitors on the /resources landing page (the QR-code
 // destination used in talks and presentations). Purely a lead-capture record —
 // the resources themselves are never gated on a submission.

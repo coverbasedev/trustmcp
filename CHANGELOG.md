@@ -15,6 +15,19 @@ All notable changes to TrustMCP are documented here. The project follows
   code, tests, and docs; the project is community-governed (see `governance/`).
 
 ### Added
+- **MCP Audit — scan an MCP server for integration risk.** A new `/audit` surface that
+  reads a server's tools (read-only handshake), researches the vendor, generates
+  **dynamic, server-specific probes** (read-only probes run live; state-changing ones are
+  recommendations only, never auto-executed), evaluates built-in controls plus an org's
+  custom clauses, and produces a standardized **risk scorecard** across twelve dimensions
+  (data, privacy, autonomy, operational, criticality, financial, compliance, security
+  posture, supply chain, reputational, liability, governance). Scans run on the operator's
+  own OpenAI/Anthropic credentials (encrypted at rest), carry a content-hashed evidence
+  bundle optionally attested with Corsair, can be interrogated from the report or through
+  the MCP server (`inspect_mcp_server`, `generate_audit_probes`, `get_mcp_audit`,
+  `list_risk_dimensions`), and vendors can publish a scorecard to their trust center
+  (`/trust/<vendorId>/audit/<slug>`). New Prisma models `LlmCredential`, `AuditClause`,
+  and `McpAuditScan` with a migration. See [`docs/mcp-audit.md`](docs/mcp-audit.md).
 - **One-click Google Drive connect.** With a network-level Google OAuth client
   (`TRUSTMCP_GOOGLE_CLIENT_ID` / `_SECRET`), a trust-center owner presses **Connect Google
   Drive**, approves read-only access at Google, and picks a folder from a browsable list —

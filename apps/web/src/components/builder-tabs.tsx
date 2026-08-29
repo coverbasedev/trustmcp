@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 // sub-pages appear as a secondary row when that group is active.
 const GROUPS: { label: string; items: [string, string][] }[] = [
   { label: "Overview", items: [["", "Overview"], ["setup", "Guided setup"]] },
-  { label: "Evidence", items: [["artifacts", "Resources"], ["drive", "Google Drive sync"], ["presentation", "Presentation"], ["sbom", "Bill of Materials"], ["attestations", "Attestations"], ["subprocessors", "Subprocessors"], ["migrations", "AI migration"]] },
+  { label: "Evidence", items: [["artifacts", "Resources"], ["drive", "Google Drive sync"], ["presentation", "Presentation"], ["sbom", "Bill of Materials"], ["attestations", "Attestations"], ["subprocessors", "Subprocessors"], ["mcp-audits", "MCP audits"], ["migrations", "AI migration"]] },
   {
     label: "Content",
     items: [
