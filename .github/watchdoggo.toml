@@ -1,0 +1,40 @@
+# How this repository declares itself to Watch Doggo.
+# Schema: watch-doggo/packages/core/src/watchdoggo/core/repo_config.py
+
+[repo]
+branch_prefix = "watchdoggo/"
+
+context_paths = ["CONTRIBUTING.md", "README.md"]
+
+[codegen]
+enabled = true
+
+[review]
+# Paths a Watch Doggo APPROVE may never cover. The review still runs and posts in full.
+#
+# `spec/` and `conformance/` are the published standard other people implement against,
+# so a wrong change there is wrong in everyone's build rather than ours. `governance`
+# says who decides what the standard is. A workflow holds this repo's identity and
+# `release.yml` publishes packages under our name, and `render.yaml` is the deployment.
+deny_globs = [
+  ".github/actions",
+  ".github/workflows",
+  # Anchored at the repo root with a trailing `/*`: a bare `spec` would also deny
+  # `apps/docs/.../reference/conformance/page.mdx`, which is a page about the
+  # standard rather than the standard.
+  "conformance/*",
+  "governance/*",
+  "render.yaml",
+  "spec/*",
+]
+
+# Where a manifest change counts as a mechanical dependency bump. The repo root is
+# always allowed. A manifest outside these is scanned by nothing and so denies.
+manifest_dirs = [
+  "apps/docs",
+  "apps/network",
+  "apps/web",
+  "mcp",
+  "packages/trustmcp-sdk",
+  "packages/trustmcp-spec",
+]
